@@ -3,3 +3,4 @@ langchain
 pytest
 boto3
 chromadb
+ollama

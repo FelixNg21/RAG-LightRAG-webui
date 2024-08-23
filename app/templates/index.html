@@ -1,8 +1,79 @@
 {% extends 'base.html' %}
 
 {% block head %}
+<link rel="stylesheet" href="{{url_for('static', filename='css/main.css') }}">
 {% endblock %}
 
 {% block body %}
+<form action="/upload" method="post" enctype="multipart/form-data">
+    <label for="file">Choose a file</label>
+    <input type="file" id="file" name="file"/>
+    <input type="submit" value="Upload"/>
+    {% if message_upload %}
+    <div id="message_upload">{{message_upload}}</div>
+    {% endif %}
+</form>
+
+
+<form action="/vectorize" method="post">
+    <div id="uploaded">
+        <h2>Uploaded Files</h2>
+        {% for file in files %}
+        <p>{{file}}</p>
+        {% endfor %}
+    </div>
+    <input type="submit" value="Vectorize"/>
+
+    <button onclick="window.location.href='/delete'">Delete</button>
+    {% if message_delete %}
+    <div id="message_delete">{{ message_delete }}</div>
+    {% endif %}
+    {% if message_vectorize %}
+    <div id="message_vectorize">{{ message_vectorize }}</div>
+    {% endif %}
+
+</form>
+
+<div id="chat-log"></div>
+<form id="query-form" action="/query" method="post">
+    <textarea id="query-text" name="query" rows="1" placeholder="Enter your query here..."></textarea>
+    <input type="submit" value="Submit"/>
+</form>
+<script>
+    document.getElementById('query-form').addEventListener('submit', function (event) {
+        event.preventDefault(); // Prevent the default form submission
+
+        let queryText = document.getElementById('query-text').value;
+        let chatLog = document.getElementById('chat-log');
+
+        // Append user query to chat log
+        let userQueryDiv = document.createElement('div');
+        userQueryDiv.className = 'user-query';
+        userQueryDiv.textContent = 'You: ' + queryText;
+        chatLog.appendChild(userQueryDiv);
+
+        let formData = new FormData(this);
+
+        fetch(this.action, {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.text())
+            .then(data => {
+                // Append server response to chat log
+                var serverResponseDiv = document.createElement('div');
+                serverResponseDiv.className = 'server-response';
+                serverResponseDiv.textContent = 'Server: ' + data;
+                print(serverResponseDiv.textContent);
+                chatLog.appendChild(serverResponseDiv);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+
+        // Clear the textarea
+        document.getElementById('query-text').value = '';
+    });
+</script>
 
 {% endblock %}

@@ -26,7 +26,6 @@ class OllamaInterface:
         context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
         prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
         prompt_updated = prompt_template.format(context=context_text, question=prompt)
-        print(prompt_updated)
         return ollama.chat(
             model=self.ollama_model_str,
             messages=[

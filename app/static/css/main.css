@@ -80,7 +80,7 @@ h2{
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.user-query, .server-response {
+.user-query, .message-response {
     padding: 10px;
     margin: 10px 0;
     border-radius: 8px;
@@ -94,7 +94,7 @@ h2{
     color: black;
 }
 
-.server-response {
+.message-response {
     background-color: #f1f1f1;
     align-self: flex-start;
     color: black;

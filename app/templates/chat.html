@@ -5,35 +5,6 @@
 {% endblock %}
 
 {% block body %}
-<form action="/upload" method="post" enctype="multipart/form-data">
-    <label for="file">Choose a file</label>
-    <input type="file" id="file" name="file"/>
-    <input type="submit" value="Upload"/>
-    {% if message_upload %}
-    <div id="message_upload">{{message_upload}}</div>
-    {% endif %}
-</form>
-
-
-<form action="/vectorize" method="post">
-    <div id="uploaded">
-        <h2>Uploaded Files</h2>
-        {% for file in files %}
-        <p>{{file}}</p>
-        {% endfor %}
-    </div>
-    <input type="submit" value="Vectorize"/>
-
-    <button onclick="window.location.href='/delete'">Delete</button>
-    {% if message_delete %}
-    <div id="message_delete">{{ message_delete }}</div>
-    {% endif %}
-    {% if message_vectorize %}
-    <div id="message_vectorize">{{ message_vectorize }}</div>
-    {% endif %}
-
-</form>
-
 <div id="chat-log"></div>
 <form id="query-form" action="/query" method="post">
     <textarea id="query-text" name="query" rows="1" placeholder="Enter your query here..."></textarea>
@@ -60,19 +31,16 @@
         })
             .then(response => response.text())
             .then(data => {
-                // Append server response to chat log
-                var serverResponseDiv = document.createElement('div');
-                serverResponseDiv.className = 'server-response';
-                serverResponseDiv.textContent = 'Server: ' + data;
-                chatLog.appendChild(serverResponseDiv);
+                // Append chatbot response to chat log
+                let chatbotResponseDiv = document.createElement('div');
+                chatbotResponseDiv.className = 'chatbot-response';
+                chatbotResponseDiv.textContent = 'Chatbot: ' + data;
+
+                chatLog.appendChild(chatbotResponseDiv);
             })
             .catch(error => {
                 console.error('Error:', error);
             });
-
-        // Clear the textarea
-        document.getElementById('query-text').value = '';
     });
 </script>
-
 {% endblock %}

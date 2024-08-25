@@ -7,7 +7,6 @@ import os
 
 document_loader = DocumentLoader()
 ollama_interface = OllamaInterface(model="mistral")
-
 route_api = Blueprint("route_api", __name__)
 
 

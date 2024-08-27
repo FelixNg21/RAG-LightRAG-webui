@@ -1,7 +1,7 @@
 from flask import Flask, render_template, url_for
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
 from app.api.routes import route_api
+from flask_htmx import HTMX
 import os
 
 app = Flask(__name__)
@@ -10,13 +10,14 @@ app = Flask(__name__)
 # app.app_context().push()
 # app.secret_key='supersecretkey'
 app.register_blueprint(route_api)
+htmx = HTMX(app)
 
 
 @app.route('/')
 def home():
     return render_template('index.html', files=os.listdir("data/pdfs"))
 
-@app.route('/chat/')
+@app.route('/chat')
 def chat():
     return render_template('chat.html')
 

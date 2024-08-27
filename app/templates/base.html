@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
+<!--    <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">-->
 
     {% block head %}
     {% endblock %}
@@ -44,4 +44,6 @@
 {% block body %}
 {% endblock %}
 </body>
+<!--<script src="/app/scripts/htmx.min.js"></script>-->
+<script src="{{url_for('static', filename='scripts/htmx.min.js')}}"></script>
 </html>

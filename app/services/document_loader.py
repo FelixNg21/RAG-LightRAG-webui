@@ -4,6 +4,7 @@ from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.schema.document import Document
 from langchain_chroma import Chroma
+from chromadb import PersistentClient
 import shutil
 from app.services.get_embedding_func import get_embedding_function
 
@@ -12,10 +13,13 @@ class DocumentLoader:
     """
     DocumentLoader class to load and split documents for use in RAG application
     """
+
     def __init__(self):
         self.data_path = "data/pdfs"
         self.chrome_path = "chroma"
+        self.collection_name = "documents"
         self.loader = PyPDFDirectoryLoader(self.data_path)
+        self.db = None
 
     def load_documents(self):
         return self.loader.load()
@@ -30,25 +34,27 @@ class DocumentLoader:
         return text_splitter.split_documents(documents)
 
     def add_to_chroma(self, chunks: list[Document]):
-        db = Chroma(
+        self.db = Chroma(
             persist_directory=self.chrome_path,
             embedding_function=get_embedding_function(),
+            collection_name=self.collection_name,
         )
         chunks_with_ids = self.calculate_chunk_ids(chunks)
 
-        existing_items = db.get(include=[])
-        existings_ids = set(existing_items["ids"])
-        print(f'Existing items: {len(existings_ids)}')
+        existing_items = self.db.get(include=[])
+        existing_ids = set(existing_items["ids"])
+        print(f'Existing items: {len(existing_ids)}')
 
         if new_chunks := [
             chunk
             for chunk in chunks_with_ids
-            if chunk.metadata["id"] not in existings_ids
+            if chunk.metadata["id"] not in existing_ids
         ]:
             new_chunk_ids = [chunk.metadata["id"] for chunk in new_chunks]
-            db.add_documents(new_chunks, ids=new_chunk_ids)
+            self.db.add_documents(new_chunks, ids=new_chunk_ids)
         else:
             print("No new chunks to add")
+        print(f'New items: {len(new_chunks)}')
 
     def calculate_chunk_ids(self, chunks: list[Document]):
         last_page_id = None
@@ -71,4 +77,9 @@ class DocumentLoader:
         return chunks
 
     def clear_database(self):
-        shutil.rmtree(self.chrome_path)
+        try:
+            chroma_client = PersistentClient(self.chrome_path)
+            chroma_client.delete_collection(self.collection_name)
+            shutil.rmtree(self.chrome_path)
+        except Exception as e:
+            raise e

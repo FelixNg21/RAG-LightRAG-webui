@@ -1,78 +1,41 @@
 {% extends 'base.html' %}
 
 {% block head %}
-<link rel="stylesheet" href="{{url_for('static', filename='css/main.css') }}">
+<script src="{{url_for('static', filename='scripts/htmx.min.js')}}"></script>
+<link rel="stylesheet" href="{{url_for('static', filename='css/main.css')}}">
 {% endblock %}
 
 {% block body %}
-<form action="/upload" method="post" enctype="multipart/form-data">
-    <label for="file">Choose a file</label>
-    <input type="file" id="file" name="file"/>
-    <input type="submit" value="Upload"/>
-    {% if message_upload %}
-    <div id="message_upload">{{message_upload}}</div>
-    {% endif %}
-</form>
+<div class="units">
+    <form id="upload-form"
+          hx-encoding="multipart/form-data"
+          hx-post="/upload"
+          hx-target="#upload_message"
+          hx-swap="textContent"
+            hx-on="htmx:afterRequest: fetch('/listfiles').then(response=>response.text().then(data=> document.getElementById('files).innerHTML = data">
+        <input type="file" name="file" multiple>
+        <button id="upload_button">Upload</button>
+        <div id="upload_message"></div>
+    </form>
+</div>
 
+<div class="units">
+    <form id="vectorize-form"
+          hx-post="/vectorize"
+          hx-target="#vectorize_message"
+          hx-swap="textContent">
+        <div id="uploaded">
+            <h5>Uploaded Files</h5>
+            <div hx-get="/listfiles" hx-trigger="load, " hx-swap="innerHTML" hx-target="#files"></div>
+            <div id="files"></div>
+        </div>
+        <button>Vectorize</button>
+        <button hx-post="/delete">Delete files</button>
+        <button hx-post="/clear-db" hx-confirm="Are you sure?">Clear DB</button>
+        <div id="vectorize_message"></div>
+    </form>
 
-<form action="/vectorize" method="post">
-    <div id="uploaded">
-        <h2>Uploaded Files</h2>
-        {% for file in files %}
-        <p>{{file}}</p>
-        {% endfor %}
-    </div>
-    <input type="submit" value="Vectorize"/>
+</div>
 
-    <button onclick="window.location.href='/delete'">Delete</button>
-    {% if message_delete %}
-    <div id="message_delete">{{ message_delete }}</div>
-    {% endif %}
-    {% if message_vectorize %}
-    <div id="message_vectorize">{{ message_vectorize }}</div>
-    {% endif %}
-
-</form>
-
-<div id="chat-log"></div>
-<form id="query-form" action="/query" method="post">
-    <textarea id="query-text" name="query" rows="1" placeholder="Enter your query here..."></textarea>
-    <input type="submit" value="Submit"/>
-</form>
-<script>
-    document.getElementById('query-form').addEventListener('submit', function (event) {
-        event.preventDefault(); // Prevent the default form submission
-
-        let queryText = document.getElementById('query-text').value;
-        let chatLog = document.getElementById('chat-log');
-
-        // Append user query to chat log
-        let userQueryDiv = document.createElement('div');
-        userQueryDiv.className = 'user-query';
-        userQueryDiv.textContent = 'You: ' + queryText;
-        chatLog.appendChild(userQueryDiv);
-
-        let formData = new FormData(this);
-
-        fetch(this.action, {
-            method: 'POST',
-            body: formData
-        })
-            .then(response => response.text())
-            .then(data => {
-                // Append server response to chat log
-                var serverResponseDiv = document.createElement('div');
-                serverResponseDiv.className = 'server-response';
-                serverResponseDiv.textContent = 'Server: ' + data;
-                chatLog.appendChild(serverResponseDiv);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-
-        // Clear the textarea
-        document.getElementById('query-text').value = '';
-    });
-</script>
 
 {% endblock %}

@@ -11,8 +11,7 @@
           hx-encoding="multipart/form-data"
           hx-post="/upload"
           hx-target="#upload_message"
-          hx-swap="textContent"
-            hx-on="htmx:afterRequest: fetch('/listfiles').then(response=>response.text().then(data=> document.getElementById('files).innerHTML = data">
+          hx-swap="textContent">
         <input type="file" name="file" multiple>
         <button id="upload_button">Upload</button>
         <div id="upload_message"></div>
@@ -26,7 +25,7 @@
           hx-swap="textContent">
         <div id="uploaded">
             <h5>Uploaded Files</h5>
-            <div hx-get="/listfiles" hx-trigger="load, " hx-swap="innerHTML" hx-target="#files"></div>
+            <div hx-get="/listfiles" hx-trigger="load, newFileUpload from:body" hx-swap="innerHTML" hx-target="#files"></div>
             <div id="files"></div>
         </div>
         <button>Vectorize</button>
@@ -36,6 +35,4 @@
     </form>
 
 </div>
-
-
 {% endblock %}

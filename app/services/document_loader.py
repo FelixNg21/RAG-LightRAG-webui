@@ -14,12 +14,12 @@ class DocumentLoader:
     DocumentLoader class to load and split documents for use in RAG application
     """
 
-    def __init__(self):
+    def __init__(self, db: Chroma, collection_name="documents"):
         self.data_path = "data/pdfs"
         self.chrome_path = "chroma"
-        self.collection_name = "documents"
         self.loader = PyPDFDirectoryLoader(self.data_path)
-        self.db = None
+        self.db = db
+        self.collection_name = collection_name
 
     def load_documents(self):
         return self.loader.load()
@@ -33,12 +33,8 @@ class DocumentLoader:
         )
         return text_splitter.split_documents(documents)
 
-    def add_to_chroma(self, chunks: list[Document]):
-        self.db = Chroma(
-            persist_directory=self.chrome_path,
-            embedding_function=get_embedding_function(),
-            collection_name=self.collection_name,
-        )
+    def add_to_chroma(self, chunks: list[Document], ollama_interface):
+        self.db = ollama_interface.get_db()
         chunks_with_ids = self.calculate_chunk_ids(chunks)
 
         existing_items = self.db.get(include=[])

@@ -3,8 +3,8 @@ from app.services.document_loader import DocumentLoader
 from app.services.ollama_interface import OllamaInterface
 import os
 
-document_loader = DocumentLoader()
 ollama_interface = OllamaInterface(model="mistral")
+document_loader = DocumentLoader(ollama_interface.get_db())
 route_api = Blueprint("route_api", __name__)
 
 
@@ -27,14 +27,18 @@ def upload_and_store():
 
         else:
             return "File must be a pdf"
+
     if len(files) == 1:
-        return "File uploaded successfully"
-    return "File(s) uploaded successfully"
+        response = make_response("File uploaded successfully", 200)
+        response.headers['HX-Trigger'] = 'newFileUpload'
+        return response
+    response = make_response("File(s) uploaded successfully", 200)
+    response.headers['HX-Trigger'] = 'newFileUpload'
+    return response
 
 
 @route_api.route("/listfiles", methods=["GET"])
 def list_files():
-    print("listfiles")
     if request.method != "GET":
         return "Method not allowed"
     files = os.listdir("data/pdfs")
@@ -54,7 +58,7 @@ def vectorize():
 
     documents = document_loader.load_documents()
     chunks = document_loader.split_documents(documents)
-    document_loader.add_to_chroma(chunks)
+    document_loader.add_to_chroma(chunks, ollama_interface)
     return "Files vectorized successfully"
 
 
@@ -78,6 +82,7 @@ def delete():
     for file in os.listdir("data/pdfs"):
         os.remove(f"data/pdfs/{file}")
     return "All files deleted"
+
 
 @route_api.route("/clear-db", methods=["POST"])
 def clear_db():

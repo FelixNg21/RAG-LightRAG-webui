@@ -5,8 +5,8 @@ from flask_htmx import HTMX
 import os
 
 app = Flask(__name__)
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
-# db = SQLAlchemy(app)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
+db = SQLAlchemy(app)
 # app.app_context().push()
 # app.secret_key='supersecretkey'
 app.register_blueprint(route_api)
@@ -25,7 +25,6 @@ def chat():
 def inject_dict_for_all_templates():
     nav = [
         {'text': "Home", "url": url_for('home')},
-        # {'text': "Upload", "url": url_for('upload')},
         {'text': "Chat", "url": url_for('chat')},
     ]
     return dict(navbar=nav)

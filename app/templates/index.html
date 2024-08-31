@@ -7,6 +7,7 @@
 
 {% block body %}
 <div class="units">
+    <h5>Upload Files</h5>
     <form id="upload-form"
           hx-encoding="multipart/form-data"
           hx-post="/upload"
@@ -23,18 +24,14 @@
           hx-post="/vectorize"
           hx-target="#vectorize_message"
           hx-swap="textContent">
-        <div id="uploaded">
-            <h5>Uploaded Files</h5>
-            <div hx-get="/listfiles" hx-trigger="load, newFileUpload from:body" hx-swap="innerHTML" hx-target="#files"></div>
-            <form>
-                <button hx-post="/delete" hx-include=[name='file']>Delete files</button>
-                <div id="files"></div>
-            </form>
+        <h5>Uploaded Files</h5>
+        <div hx-get="/listfiles" hx-trigger="load, newFileUpload from:body, fileDeleted from:body" hx-swap="innerHTML"
+             hx-target="#files"></div>
 
-        </div>
+        <div id="files"></div>
         <button>Vectorize</button>
-
-        <button hx-post="/clear-db" hx-confirm="Are you sure?">Clear DB</button>
+        <button hx-post="/delete" hx-include=[name='file']>Delete selected files</button>
+        <button hx-post="/clear-db" hx-confirm="Are you sure?">Clear database</button>
         <div id="vectorize_message"></div>
     </form>
 

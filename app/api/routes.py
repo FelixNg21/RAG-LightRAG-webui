@@ -56,16 +56,22 @@ def vectorize():
     # takes in a list of pdf files and vectorizes them
     if request.method != "POST":
         return "Method not allowed"
+    print("db exists" if ollama_interface.get_db() else "db does not exist")
+    try:
+        documents = document_loader.load_documents()
+        chunks = document_loader.split_documents(documents)
+        document_loader.add_to_chroma(chunks, ollama_interface)
+    except:
+        reinitialize_db()
 
-    documents = document_loader.load_documents()
-    chunks = document_loader.split_documents(documents)
-    document_loader.add_to_chroma(chunks, ollama_interface)
     return "Files vectorized successfully"
 
 
 @route_api.route("/query", methods=["POST"])  # TODO
 async def query():
     # takes in a query and returns a response
+    if request.method != "POST":
+        return "Method not allowed"
     query_text = request.form.get("query")
 
     result = ollama_interface.query_ollama(query_text)
@@ -82,12 +88,24 @@ def delete():
     # deletes all pdf files
     if request.method != "POST":
         return "Method not allowed"
-    files = request.form.get("file")
-    print(files)
-    # for file in os.listdir("data/pdfs"):
-    #     os.remove(f"data/pdfs/{file}")
-    return "All files deleted"
+    files = request.form.getlist("file")
+    for file in files:
+        try:
+            os.remove(f"data/pdfs/{file}")
+        except FileNotFoundError:
+            return f"File {file} not found"
+    if len(files) == 0:
+        return "No files selected"
+    response = make_response("Selected files deleted", 200)
+    response.headers['HX-Trigger'] = 'fileDeleted'
+    return response
 
+@route_api.route("/reinitialize-db", methods=["POST"])
+def reinitialize_db():
+    if request.method != "POST":
+        return "Method not allowed"
+    ollama_interface.restart_db()
+    return "Database reinitialized"
 
 @route_api.route("/clear-db", methods=["POST"])
 def clear_db():

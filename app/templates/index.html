@@ -12,7 +12,7 @@
           hx-post="/upload"
           hx-target="#upload_message"
           hx-swap="textContent">
-        <input type="file" name="file" multiple>
+        <input type="file" name="files" multiple>
         <button id="upload_button">Upload</button>
         <div id="upload_message"></div>
     </form>
@@ -26,10 +26,14 @@
         <div id="uploaded">
             <h5>Uploaded Files</h5>
             <div hx-get="/listfiles" hx-trigger="load, newFileUpload from:body" hx-swap="innerHTML" hx-target="#files"></div>
-            <div id="files"></div>
+            <form>
+                <button hx-post="/delete" hx-include=[name='file']>Delete files</button>
+                <div id="files"></div>
+            </form>
+
         </div>
         <button>Vectorize</button>
-        <button hx-post="/delete">Delete files</button>
+
         <button hx-post="/clear-db" hx-confirm="Are you sure?">Clear DB</button>
         <div id="vectorize_message"></div>
     </form>

@@ -13,10 +13,11 @@ def upload_and_store():
     if request.method != "POST":
         return "Method not allowed"
     # takes in pdf files and stores them in the data/pdfs directory
-    if 'file' not in request.files:
+    if 'files' not in request.files:
         return "No file part"
 
-    files = request.files.getlist("file")
+    files = request.files.getlist("files")
+
     for file in files:
         if file.filename == '':
             return "No selected file"
@@ -46,7 +47,7 @@ def list_files():
     if not files:
         return "No files uploaded"
     for file in files:
-        response += f"<input type='checkbox' name='file' value='{file}'> {file}<br>"
+        response += f"<input type='checkbox' name='file' value='{file}' hx-trigger='true'> {file}<br>"
     return response
 
 
@@ -79,8 +80,12 @@ async def query():
 @route_api.route("/delete", methods=["POST"])
 def delete():
     # deletes all pdf files
-    for file in os.listdir("data/pdfs"):
-        os.remove(f"data/pdfs/{file}")
+    if request.method != "POST":
+        return "Method not allowed"
+    files = request.form.get("file")
+    print(files)
+    # for file in os.listdir("data/pdfs"):
+    #     os.remove(f"data/pdfs/{file}")
     return "All files deleted"
 
 

@@ -37,7 +37,7 @@ class OllamaInterface:
                     "content": prompt_updated,
                 }
             ],
-            stream=True,
+            stream=False,
         )
 
     def get_db(self):

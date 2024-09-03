@@ -1,10 +1,70 @@
+body {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    font-family: Arial, sans-serif;
+}
 div[class='units']{
-    margin-top: 20px;
-    margin-bottom: 20px;
-    margin-left: 20px;
-    margin-right: 20px;
+    /*width: 100%;*/
     padding: 20px;
+    overflow-y: auto;
     border: 1px solid #000000;
     border-radius: 10px;
     background-color: #f0f0f0;
+}
+
+
+#chat-log {
+    margin: 10px;
+    flex-grow: 1;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    background-color: #f9f9f9;
+
+}
+
+.user-query, .chatbot-response {
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.user-query {
+    background-color: #d1e7dd;
+    align-self: flex-end;
+}
+
+.chatbot-response {
+    background-color: #f8d7da;
+    align-self: flex-start;
+}
+
+#query-form {
+    margin: 10px;
+    flex-direction: column;
+}
+
+#query-text {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    margin-bottom: 10px;
+}
+
+input[type="submit"] {
+    padding: 10px;
+    border: none;
+    border-radius: 10px;
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    width: 100%;
+}
+
+input[type="submit"]:hover {
+    background-color: #0056b3;
 }

@@ -6,41 +6,33 @@
 
 {% block body %}
 <div id="chat-log"></div>
-<form id="query-form" action="/query" method="post">
-    <textarea id="query-text" name="query" rows="1" placeholder="Enter your query here..."></textarea>
+<!--<form id="query-form" hx-post="/query" method="post" hx-target="#chat-log" hx-swap="beforeend"-->
+<!--      hx-on::after-request="if(event.detail.successful) this.reset()"-->
+<!--      hx-trigger="submit, keydown[keyCode===13&&!event.shiftKey]"-->
+<!--      hx-on:htmx:validation:validate="event.preventDefault(); alert('Please enter a query')"-->
+<!--      >-->
+<!--    <textarea id="query-text" name="query" rows="1" placeholder="Enter your query here..." hx-validate="true"></textarea>-->
+<!--    <input type="submit" value="Submit"  />-->
+<!--</form>-->
+
+<form hx-on::after-request="if(event.detail.successful) this.reset()"
+      hx-post="/query"
+      hx-target="#chat-log"
+      hx-swap="beforeend"
+      hx-validate="true"
+      id="query-form">
+    <textarea id="query-text" name="query" placeholder="Enter your query here..."
+              onkeyup="this.setCustomValidity('')"
+              hx-on:htmx:validation:validate="if(this.value==''){
+                this.setCustomValidity('Please enter a query');
+                htmx.find('#query-form').reportValidity()
+              }"></textarea>
     <input type="submit" value="Submit"/>
+
+
 </form>
-<script>
-    document.getElementById('query-form').addEventListener('submit', function (event) {
-        event.preventDefault(); // Prevent the default form submission
 
-        let queryText = document.getElementById('query-text').value;
-        let chatLog = document.getElementById('chat-log');
+{% endblock %}
 
-        // Append user query to chat log
-        let userQueryDiv = document.createElement('div');
-        userQueryDiv.className = 'user-query';
-        userQueryDiv.textContent = 'You: ' + queryText;
-        chatLog.appendChild(userQueryDiv);
-
-        let formData = new FormData(this);
-
-        fetch(this.action, {
-            method: 'POST',
-            body: formData
-        })
-            .then(response => response.text())
-            .then(data => {
-                // Append chatbot response to chat log
-                let chatbotResponseDiv = document.createElement('div');
-                chatbotResponseDiv.className = 'chatbot-response';
-                chatbotResponseDiv.textContent = 'Chatbot: ' + data;
-
-                chatLog.appendChild(chatbotResponseDiv);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-    });
-</script>
+{% block scripts %}
 {% endblock %}

@@ -17,9 +17,11 @@ htmx = HTMX(app)
 def home():
     return render_template('index.html', files=os.listdir("data/pdfs"))
 
+
 @app.route('/chat')
 def chat():
     return render_template('chat.html')
+
 
 @app.context_processor
 def inject_dict_for_all_templates():
@@ -28,6 +30,7 @@ def inject_dict_for_all_templates():
         {'text': "Chat", "url": url_for('chat')},
     ]
     return dict(navbar=nav)
+
 
 if __name__ == "__main__":
     app.run(debug=True)

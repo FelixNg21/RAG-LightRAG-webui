@@ -1,0 +1,13 @@
+pypdf
+langchain
+langchain_community
+langchain_text_splitters
+langchain_chroma
+pytest
+boto3
+chromadb
+ollama
+flask
+flask_sqlalchemy
+flask_htmx
+

@@ -6,7 +6,6 @@ from langchain.schema.document import Document
 from langchain_chroma import Chroma
 from chromadb import PersistentClient
 import shutil
-from app.services.get_embedding_func import get_embedding_function
 
 
 class DocumentLoader:

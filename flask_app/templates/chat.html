@@ -5,6 +5,14 @@
 {% endblock %}
 
 {% block body %}
+<div id="model-details">
+    <h5>Model Details</h5>
+    <div id="model-details-content"
+    hx-get="/model-details"
+    hx-target="this"
+    hx-swap="innerHTML"
+    hx-trigger="load"></div>
+</div>
 <div id="chat-log"></div>
 <!--<form id="query-form" hx-post="/query" method="post" hx-target="#chat-log" hx-swap="beforeend"-->
 <!--      hx-on::after-request="if(event.detail.successful) this.reset()"-->

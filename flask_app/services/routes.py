@@ -1,6 +1,6 @@
-from flask import request, jsonify, Blueprint, Response, render_template, url_for, redirect, make_response
-from app.services.document_loader import DocumentLoader
-from app.services.ollama_interface import OllamaInterface
+from flask import request, jsonify, Blueprint, make_response
+from .document_loader import DocumentLoader
+from .ollama_interface import OllamaInterface
 import os
 
 ollama_interface = OllamaInterface(model="mistral")
@@ -107,6 +107,11 @@ def delete():
     response.headers['HX-Trigger'] = 'fileDeleted'
     return response
 
+@route_api.route('/model-details', methods=["GET"])
+def model_details():
+    if request.method != "GET":
+        return "Method not allowed"
+    return jsonify(ollama_interface.get_details())
 
 @route_api.route("/reinitialize-db", methods=["POST"])
 def reinitialize_db():

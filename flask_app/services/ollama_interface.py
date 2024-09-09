@@ -1,8 +1,7 @@
 import ollama
-from app.services.get_embedding_func import get_embedding_function
+from .get_embedding_func import get_embedding_function
 from langchain_chroma import Chroma
 from langchain.prompts import ChatPromptTemplate
-from langchain_community.llms.ollama import Ollama
 
 CHROMA_PATH = "chroma"
 
@@ -17,6 +16,8 @@ Answer the question based on the above context: {question}
 
 class OllamaInterface:
     def __init__(self, model: str):
+
+        self.ollama = ollama
         self.ollama_model_str = model
         self.chroma_path = CHROMA_PATH
         self.collection_name = "documents"
@@ -29,7 +30,7 @@ class OllamaInterface:
         context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
         prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
         prompt_updated = prompt_template.format(context=context_text, question=prompt)
-        return ollama.chat(
+        return self.ollama.chat(
             model=self.ollama_model_str,
             messages=[
                 {
@@ -51,8 +52,7 @@ class OllamaInterface:
     def get_collection_name(self):
         return self.collection_name
 
-# if __name__ == "__main__":
-#     ollama_interface = OllamaInterface(model="mistral")
-#     response = ollama_interface.query_ollama("What's the objective of ticket to ride?")
-#     for chunk in response:
-#         print(chunk['message']['content'], end="", flush=True)
+    def get_details(self):
+        return self.ollama.ps()
+
+

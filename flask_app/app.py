@@ -1,14 +1,14 @@
 from flask import Flask, render_template, url_for
 from flask_sqlalchemy import SQLAlchemy
-from app.api.routes import route_api
+from services.routes import route_api
 from flask_htmx import HTMX
 import os
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
 db = SQLAlchemy(app)
-# app.app_context().push()
-# app.secret_key='supersecretkey'
+# flask_app.app_context().push()
+# flask_app.secret_key='supersecretkey'
 app.register_blueprint(route_api)
 htmx = HTMX(app)
 
@@ -33,4 +33,4 @@ def inject_dict_for_all_templates():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0', debug=True)

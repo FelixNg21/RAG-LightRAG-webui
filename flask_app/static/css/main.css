@@ -13,6 +13,13 @@ div[class='units']{
     background-color: #f0f0f0;
 }
 
+#model-details{
+    margin:10px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    background-color: #f9f9f9;
+}
 
 #chat-log {
     margin: 10px;

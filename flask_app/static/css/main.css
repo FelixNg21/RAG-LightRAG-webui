@@ -6,14 +6,20 @@ body {
 }
 div[class='units']{
     /*width: 100%;*/
-    padding: 20px;
+    padding: 10px;
     overflow-y: auto;
     border: 1px solid #000000;
     border-radius: 10px;
     background-color: #f0f0f0;
+    margin: 10px;
 }
 
-#model-details{
+#model-container{
+    display:flex;
+    justify-content: flex-start;
+
+}
+#model-details, #pull-models, #current-model, #switch-model{
     margin:10px;
     padding: 10px;
     border: 1px solid #ccc;
@@ -74,4 +80,18 @@ input[type="submit"] {
 
 input[type="submit"]:hover {
     background-color: #0056b3;
+}
+
+#spinner{
+    width: 20px;
+}
+.htmx-indicator{
+    opacity:0;
+    transition: opacity 500ms ease-in;
+}
+.htmx-request .htmx-indicator{
+    opacity:1;
+}
+.htmx-request.htmx-indicator{
+    opacity:1;
 }

@@ -8,7 +8,7 @@ document_loader = DocumentLoader(ollama_interface.get_db())
 route_api = Blueprint("route_api", __name__)
 
 
-@route_api.route("/upload", methods=["POST"])  # TODO
+@route_api.route("/upload", methods=["POST"])
 def upload_and_store():
     if request.method != "POST":
         return "Method not allowed"
@@ -111,7 +111,12 @@ def delete():
 def model_details():
     if request.method != "GET":
         return "Method not allowed"
-    return jsonify(ollama_interface.get_details())
+    details = ollama_interface.get_details()
+    response = ''
+    for detail in details:
+        response += f"<option value='{detail}'>{detail}</option>"
+    return response
+
 
 @route_api.route("/reinitialize-db", methods=["POST"])
 def reinitialize_db():
@@ -126,3 +131,35 @@ def clear_db():
     if request.method != "POST":
         return "Method not allowed"
     document_loader.clear_database()
+
+@route_api.route("/pull-models", methods=["POST"])
+def pull_model():
+    if request.method != "POST":
+        return "Method not allowed"
+    model_name = request.form.get("model-name")
+    if model_name == '':
+        return "No model entered"
+    ollama_interface.pull_model(model_name)
+    return "Model pulled successfully"
+
+@route_api.route('/current-model', methods=["GET"])
+def current_model():
+    if request.method != "GET":
+        return "Method not allowed"
+    current_models = ollama_interface.get_current_model()
+    response = ''
+    for model in current_models:
+        response += f"<option value='{model}'>{model}</option>"
+    return response
+
+@route_api.route('/switch-model', methods=["POST"])
+def switch_model():
+    if request.method != "POST":
+        return "Method not allowed"
+    model_name = request.form.get("model-name")
+    if model_name == '':
+        return "No model entered"
+    ollama_interface.switch_model(model_name)
+    response = make_response("Model switched successfully", 200)
+    response.headers['HX-Trigger'] = 'modelSwitched'
+    return response

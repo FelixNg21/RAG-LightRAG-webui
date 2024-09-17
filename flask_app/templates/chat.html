@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 
 {% block head %}
+<title>Chat</title>
 <link rel="stylesheet" href="{{url_for('static', filename='css/main.css') }}">
 {% endblock %}
 
@@ -73,8 +74,23 @@
 
 
 </form>
+<script>
 
+    document.addEventListener('DOMContentLoaded', function () {
+        console.log('DOM loaded');
+        // Load chat log from localStorage
+        const chatLog = localStorage.getItem('chatLog');
+        if (chatLog) {
+            document.getElementById('chat-log').innerHTML = chatLog;
+
+        }
+        // Save chat log to local Storage
+        const observer = new MutationObserver(() => {
+            console.log('Chat log changed');
+            localStorage.setItem('chatLog', document.getElementById('chat-log').innerHTML);
+        });
+        observer.observe(document.getElementById('chat-log'), {childList: true, subtree: true});
+    });
+</script>
 {% endblock %}
 
-{% block scripts %}
-{% endblock %}

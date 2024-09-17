@@ -74,8 +74,8 @@ async def query():
             print("No query text")
         response_text = chat(query_text)
         response = ''
-        response += div_generator("user-query", f'You: {query_text}')
-        response += div_generator("chatbot-response", f'Chatbot: {response_text}')
+        response += div_generator("user-query", f'{query_text}')
+        response += div_generator("chatbot-response", f'{response_text}')
 
         return response
 
@@ -107,6 +107,7 @@ def delete():
     response.headers['HX-Trigger'] = 'fileDeleted'
     return response
 
+
 @route_api.route('/model-details', methods=["GET"])
 def model_details():
     if request.method != "GET":
@@ -132,6 +133,7 @@ def clear_db():
         return "Method not allowed"
     document_loader.clear_database()
 
+
 @route_api.route("/pull-models", methods=["POST"])
 def pull_model():
     if request.method != "POST":
@@ -142,6 +144,7 @@ def pull_model():
     ollama_interface.pull_model(model_name)
     return "Model pulled successfully"
 
+
 @route_api.route('/current-model', methods=["GET"])
 def current_model():
     if request.method != "GET":
@@ -151,6 +154,7 @@ def current_model():
     for model in current_models:
         response += f"<option value='{model}'>{model}</option>"
     return response
+
 
 @route_api.route('/switch-model', methods=["POST"])
 def switch_model():

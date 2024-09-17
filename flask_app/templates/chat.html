@@ -56,28 +56,31 @@
 
 </div>
 
-<div id="chat-log"></div>
 
+<div id="chat-log"></div>
 <form hx-on::after-request="if(event.detail.successful) this.reset()"
       hx-post="/query"
       hx-target="#chat-log"
       hx-swap="beforeend"
       hx-validate="true"
-      id="query-form">
+      id="query-form"
+      hx-trigger="keydown[key==='Enter'&&!shiftKey]:submit"
+      hx-on:keydown="(event.keyCode==13&&!event.shiftKey)?event.preventDefault():null"
+>
     <textarea id="query-text" name="query" placeholder="Enter your query here..."
               onkeyup="this.setCustomValidity('')"
               hx-on:htmx:validation:validate="if(this.value==''){
                 this.setCustomValidity('Please enter a query');
                 htmx.find('#query-form').reportValidity()
-              }"></textarea>
-    <input type="submit" value="Submit"/>
+              }"
 
-
+              ></textarea>
+<!--    <input type="submit" value="Submit" hidden/>-->
 </form>
-<script>
 
+
+<script>
     document.addEventListener('DOMContentLoaded', function () {
-        console.log('DOM loaded');
         // Load chat log from localStorage
         const chatLog = localStorage.getItem('chatLog');
         if (chatLog) {
@@ -86,11 +89,15 @@
         }
         // Save chat log to local Storage
         const observer = new MutationObserver(() => {
-            console.log('Chat log changed');
             localStorage.setItem('chatLog', document.getElementById('chat-log').innerHTML);
         });
         observer.observe(document.getElementById('chat-log'), {childList: true, subtree: true});
     });
+
+    document.addEventListener('htmx:afterSettle', function(evt) {
+            const targetDiv = document.getElementById('chat-log');
+            targetDiv.scrollTop = targetDiv.scrollHeight;  // Scroll to the bottom
+        });
 </script>
 {% endblock %}
 

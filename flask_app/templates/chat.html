@@ -6,55 +6,6 @@
 {% endblock %}
 
 {% block body %}
-<div id="model-container">
-    <div id="model-details">
-        <h5>Model Downloaded</h5>
-        <div id="model-details-content"
-             hx-get="/model-details"
-             hx-target="this"
-             hx-swap="innerHTML"
-             hx-trigger="load"></div>
-
-    </div>
-    <div id="pull-models">
-        <h5>Pull New Models</h5>
-        <div>
-            Browse available models <a href="https://ollama.com/library" target="_blank">here</a>.
-        </div>
-        <div id="model-pull-message"></div>
-        <form>
-            <input type="text" id="model-name" name="model-name" placeholder="Enter model name">
-            <button hx-post="/pull-models" hx-target="#model-pull-message" hx-swap="innerHTML"
-                    hx-indicator="#spinner">Pull
-                <img id="spinner" class="htmx-indicator" src="{{ url_for('static', filename='img/bars.svg') }}">
-            </button>
-
-        </form>
-    </div>
-
-    <div id="current-model">
-        <h5>Running Models</h5>
-        <div id="current-model-content"
-             hx-get="/current-model"
-             hx-target="this"
-             hx-swap="innerHTML"
-             hx-trigger="load, modelSwitched from:body"></div>
-    </div>
-
-    <div id="switch-model">
-        <h5>Switch LLM Model</h5>
-        <div id="switch-model-message"></div>
-        <form>
-            <input type="text" id="model-name-switch" name="model-name" placeholder="Enter model name">
-            <button hx-post="/switch-model" hx-target="#switch-model-message" hx-swap="innerHTML">Switch
-
-            </button>
-
-        </form>
-    </div>
-
-
-</div>
 
 
 <div id="chat-log"></div>
@@ -64,29 +15,40 @@
       hx-swap="beforeend"
       hx-validate="true"
       id="query-form"
-      hx-trigger="keydown[key==='Enter'&&!shiftKey]:submit"
+      hx-trigger="keydown[key=='Enter'&&!shiftKey]:submit"
       hx-on:keydown="(event.keyCode==13&&!event.shiftKey)?event.preventDefault():null"
 >
+    <label for="query-text"></label>
     <textarea id="query-text" name="query" placeholder="Enter your query here..."
               onkeyup="this.setCustomValidity('')"
               hx-on:htmx:validation:validate="if(this.value==''){
                 this.setCustomValidity('Please enter a query');
                 htmx.find('#query-form').reportValidity()
               }"
-
-              ></textarea>
-<!--    <input type="submit" value="Submit" hidden/>-->
+    ></textarea>
+    <!--    <input type="submit" value="Submit" hidden/>-->
 </form>
 
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Load chat log from localStorage
-        const chatLog = localStorage.getItem('chatLog');
-        if (chatLog) {
-            document.getElementById('chat-log').innerHTML = chatLog;
 
-        }
+    document.addEventListener('DOMContentLoaded', function () {
+        const sessionID = localStorage.getItem('sessionID') || generateSessionID();
+        localStorage.setItem('sessionID', sessionID);
+        document.cookie = `sessionID=${sessionID}`;
+
+        // Load chat log from server
+        fetch(`/load-chat?session_id=${sessionID}`)
+            .then(response => response.json())
+            .then(data => {
+                const chatLogDiv = document.getElementById('chat-log');
+                data.forEach(log => {
+                    chatLogDiv.innerHTML += `<div class='user-query'>${log.user_query}</div>`;
+                    chatLogDiv.innerHTML += `<div class='chatbot-response'>${log.chatbot_response}</div>`;
+                });
+                chatLogDiv.scrollTop = chatLogDiv.scrollHeight;
+            });
+
         // Save chat log to local Storage
         const observer = new MutationObserver(() => {
             localStorage.setItem('chatLog', document.getElementById('chat-log').innerHTML);
@@ -94,10 +56,9 @@
         observer.observe(document.getElementById('chat-log'), {childList: true, subtree: true});
     });
 
-    document.addEventListener('htmx:afterSettle', function(evt) {
-            const targetDiv = document.getElementById('chat-log');
-            targetDiv.scrollTop = targetDiv.scrollHeight;  // Scroll to the bottom
-        });
+    function generateSessionID() {
+        return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    }
 </script>
 {% endblock %}
 

@@ -1,11 +1,64 @@
-from flask import request, jsonify, Blueprint, make_response
+from flask import request, Blueprint, make_response, jsonify
 from .document_loader import DocumentLoader
 from .ollama_interface import OllamaInterface
 import os
+from .chatlog import db, ChatLog
 
 ollama_interface = OllamaInterface(model="mistral")
 document_loader = DocumentLoader(ollama_interface.get_db())
 route_api = Blueprint("route_api", __name__)
+
+"""
+Chat Management
+"""
+
+
+@route_api.route("/query", methods=["POST"])
+async def query():
+    if request.method == 'POST':
+        query_text = request.form.get("query")
+        session_id = request.cookies.get("sessionID")
+        if query_text == '':
+            print("No query text")
+
+        response_text = chat(query_text)
+
+        # Save chat to database
+        chat_log = ChatLog(session_id=session_id, user_query=query_text, chatbot_response=response_text)
+        db.session.add(chat_log)
+        db.session.commit()
+
+        response = ''
+        response += div_generator("user-query", f'{query_text}')
+        response += div_generator("chatbot-response", f'{response_text}')
+
+        return response
+
+
+def div_generator(classname, text):
+    return f"<div class='{classname}'>{text}</div> "
+
+
+def chat(query_text):
+    result = ollama_interface.query_ollama(query_text)
+
+    return result['message']['content']
+
+
+@route_api.route('/load-chat', methods=["GET"])
+def load_chat():
+    session_id = request.args.get("session_id")
+    chat_logs = ChatLog.query.filter_by(session_id=session_id).all()
+    chat_data = [
+        {"user_query": log.user_query, "chatbot_response": log.chatbot_response}
+        for log in chat_logs
+    ]
+    return jsonify(chat_data)
+
+
+"""
+PDF Management
+"""
 
 
 @route_api.route("/upload", methods=["POST"])
@@ -66,30 +119,6 @@ def vectorize():
     return "Files vectorized successfully"
 
 
-@route_api.route("/query", methods=["POST"])
-async def query():
-    if request.method == 'POST':
-        query_text = request.form.get("query")
-        if query_text == '':
-            print("No query text")
-        response_text = chat(query_text)
-        response = ''
-        response += div_generator("user-query", f'{query_text}')
-        response += div_generator("chatbot-response", f'{response_text}')
-
-        return response
-
-
-def div_generator(classname, text):
-    return f"<div class='{classname}'>{text}</div> "
-
-
-def chat(query_text):
-    result = ollama_interface.query_ollama(query_text)
-
-    return result['message']['content']
-
-
 @route_api.route("/delete", methods=["POST"])
 def delete():
     # deletes all pdf files
@@ -108,17 +137,6 @@ def delete():
     return response
 
 
-@route_api.route('/model-details', methods=["GET"])
-def model_details():
-    if request.method != "GET":
-        return "Method not allowed"
-    details = ollama_interface.get_details()
-    response = ''
-    for detail in details:
-        response += f"<option value='{detail}'>{detail}</option>"
-    return response
-
-
 @route_api.route("/reinitialize-db", methods=["POST"])
 def reinitialize_db():
     if request.method != "POST":
@@ -132,6 +150,22 @@ def clear_db():
     if request.method != "POST":
         return "Method not allowed"
     document_loader.clear_database()
+
+
+"""
+Model Management
+"""
+
+
+@route_api.route('/model-details', methods=["GET"])
+def model_details():
+    if request.method != "GET":
+        return "Method not allowed"
+    details = ollama_interface.get_details()
+    response = ''
+    for detail in details:
+        response += f"<option value='{detail}'>{detail}</option>"
+    return response
 
 
 @route_api.route("/pull-models", methods=["POST"])

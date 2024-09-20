@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<title>Models</title>
+<link rel="stylesheet" href="{{url_for('static', filename='css/main.css') }}">
+{% endblock %}
+
+{% block body %}
+<div id="model-container">
+    <div id="model-details">
+        <h5>Model Downloaded</h5>
+        <div id="model-details-content"
+             hx-get="/model-details"
+             hx-target="this"
+             hx-swap="innerHTML"
+             hx-trigger="load"></div>
+
+    </div>
+    <div id="pull-models">
+        <h5>Pull New Models</h5>
+        <div>
+            Browse available models <a href="https://ollama.com/library" target="_blank">here</a>.
+        </div>
+        <div id="model-pull-message"></div>
+        <form>
+            <input type="text" id="model-name" name="model-name" placeholder="Enter model name">
+            <button hx-post="/pull-models" hx-target="#model-pull-message" hx-swap="innerHTML"
+                    hx-indicator="#spinner">Pull
+                <img id="spinner" class="htmx-indicator" src="{{ url_for('static', filename='img/bars.svg') }}">
+            </button>
+
+        </form>
+    </div>
+
+    <div id="current-model">
+        <h5>Running Models</h5>
+        <div id="current-model-content"
+             hx-get="/current-model"
+             hx-target="this"
+             hx-swap="innerHTML"
+             hx-trigger="load, modelSwitched from:body"></div>
+    </div>
+
+    <div id="switch-model">
+        <h5>Switch LLM Model</h5>
+        <div id="switch-model-message"></div>
+        <form>
+            <input type="text" id="model-name-switch" name="model-name" placeholder="Enter model name">
+            <button hx-post="/switch-model" hx-target="#switch-model-message" hx-swap="innerHTML">Switch
+
+            </button>
+
+        </form>
+    </div>
+
+
+</div>
+{% endblock %}

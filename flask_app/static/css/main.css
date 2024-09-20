@@ -14,12 +14,11 @@ div[class='units']{
 }
 
 #model-container{
-    flex: auto;
     display: flex;
     flex-direction: row;
     /*justify-content: flex-end;*/
     margin: auto;
-    height: min-content;
+    height: auto;
 }
 #model-details, #pull-models, #current-model, #switch-model{
     margin:10px;
@@ -30,8 +29,6 @@ div[class='units']{
 }
 
 #chat-log {
-
-    /*flex-grow: 1;*/
     overflow-y: auto;
     padding: 1px;
     border-radius: 10px;

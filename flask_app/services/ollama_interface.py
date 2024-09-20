@@ -82,7 +82,6 @@ class OllamaInterface:
         self.ollama.generate(model=self.ollama_model_str,
                              keep_alive=0)
         self.ollama_model_str = model_name
-        print(f"Switched to model {self.ollama_model_str}")
         self.ollama.generate(model=self.ollama_model_str,
                              keep_alive=-1)
 

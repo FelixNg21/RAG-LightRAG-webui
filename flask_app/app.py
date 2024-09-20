@@ -1,16 +1,18 @@
 from flask import Flask, render_template, url_for
-from flask_sqlalchemy import SQLAlchemy
 from services.routes import route_api
 from flask_htmx import HTMX
 import os
+from services.chatlog import db
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
-db = SQLAlchemy(app)
-# flask_app.app_context().push()
-# flask_app.secret_key='supersecretkey'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chat_log.db'
+db.init_app(app)
 app.register_blueprint(route_api)
 htmx = HTMX(app)
+
+
+with app.app_context():
+    db.create_all()
 
 
 @app.route('/')
@@ -22,12 +24,17 @@ def home():
 def chat():
     return render_template('chat.html')
 
+@app.route('/models')
+def models():
+    return render_template('models.html')
+
 
 @app.context_processor
 def inject_dict_for_all_templates():
     nav = [
         {'text': "Home", "url": url_for('home')},
         {'text': "Chat", "url": url_for('chat')},
+        {'text': "Models", "url": url_for('models')},
     ]
     return dict(navbar=nav)
 

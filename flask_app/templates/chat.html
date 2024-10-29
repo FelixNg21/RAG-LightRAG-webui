@@ -8,26 +8,29 @@
 {% block body %}
 
 
-<div id="chat-log"></div>
+<div id="chat-log">
+
+</div>
 <form hx-on::after-request="if(event.detail.successful) this.reset()"
-      hx-post="/query"
-      hx-target="#chat-log"
-      hx-swap="beforeend"
-      hx-validate="true"
-      id="query-form"
-      hx-trigger="keydown[key=='Enter'&&!shiftKey]:submit"
-      hx-on:keydown="(event.keyCode==13&&!event.shiftKey)?event.preventDefault():null"
+  hx-post="/query"
+  hx-target="#chat-log"
+  hx-swap="beforeend"
+  hx-validate="true"
+  id="query-form"
+  hx-trigger="keydown[key=='Enter'&&!shiftKey]:submit"
+  hx-on:keydown="(event.keyCode==13&&!event.shiftKey)?event.preventDefault():null"
 >
-    <label for="query-text"></label>
-    <textarea id="query-text" name="query" placeholder="Enter your query here..."
-              onkeyup="this.setCustomValidity('')"
-              hx-on:htmx:validation:validate="if(this.value==''){
-                this.setCustomValidity('Please enter a query');
-                htmx.find('#query-form').reportValidity()
-              }"
-    ></textarea>
-    <!--    <input type="submit" value="Submit" hidden/>-->
+<label for="query-text"></label>
+<textarea id="query-text" name="query" placeholder="Enter your query here..."
+          onkeyup="this.setCustomValidity('')"
+          hx-on:htmx:validation:validate="if(this.value==''){
+            this.setCustomValidity('Please enter a query');
+            htmx.find('#query-form').reportValidity()
+          }"
+></textarea>
+<!--    <input type="submit" value="Submit" hidden/>-->
 </form>
+
 
 
 <script>
@@ -43,7 +46,7 @@
             .then(data => {
                 const chatLogDiv = document.getElementById('chat-log');
                 data.forEach(log => {
-                    chatLogDiv.innerHTML += `<div class='user-query'>${log.user_query}</div>`;
+                    chatLogDiv.innerHTML += `<span class='user-query'>${log.user_query}</span>`;
                     chatLogDiv.innerHTML += `<div class='chatbot-response'>${log.chatbot_response}</div>`;
                 });
                 chatLogDiv.scrollTop = chatLogDiv.scrollHeight;

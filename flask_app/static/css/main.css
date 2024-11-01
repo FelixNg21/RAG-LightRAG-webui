@@ -102,7 +102,7 @@ input[type="submit"]:hover {
     min-height: 100vh;
     width: 150px;
     margin-left: -150px;
-    transition: margin 0.10s ease-out;
+    /*transition: margin 0.10s ease-out;*/
 }
 
 #wrapper.toggled #sidebar-wrapper {
@@ -116,4 +116,8 @@ input[type="submit"]:hover {
 
 .container-fluid {
     padding: 0;
+}
+
+.no-transition {
+    transition: none !important;
 }

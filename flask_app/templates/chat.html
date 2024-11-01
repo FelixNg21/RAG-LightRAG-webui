@@ -5,6 +5,18 @@
 <link rel="stylesheet" href="{{url_for('static', filename='css/main.css') }}">
 {% endblock %}
 
+{% block chatbar %}
+<ul class="navbar-nav mr-auto">
+    {% for item in chat_navbar %}
+    {% if item.url %}
+    <li class="nav-item">
+        <a class="nav-link" href="{{ item.url }}">{{ item.text }}</a>
+    </li>
+    {% endif %}
+    {% endfor %}
+</ul>
+{% endblock %}
+
 {% block content %}
 <div id="chat-log">
 </div>

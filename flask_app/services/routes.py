@@ -1,8 +1,9 @@
-from flask import request, Blueprint, make_response, jsonify
+from flask import request, Blueprint, make_response, jsonify, url_for
 from .document_loader import DocumentLoader
 from .ollama_interface import OllamaInterface
 import os
 from .chatlog import db, ChatLog
+import uuid
 
 ollama_interface = OllamaInterface(model="mistral")
 document_loader = DocumentLoader(ollama_interface.get_db())
@@ -55,6 +56,7 @@ def load_chat():
     ]
     return jsonify(chat_data)
 
+
 @route_api.route('/view-chats', methods=["GET"])
 def view_chats():
     chat_logs = ChatLog.query.all()
@@ -63,6 +65,20 @@ def view_chats():
         for log in chat_logs
     ]
     return jsonify(chat_data)
+
+#TODO: modify to clear chat since this function makes a new session
+@route_api.route('/new-session', methods=["GET"])
+def new_session():
+    session_id = generate_session_id()
+    response = make_response("New session created", 200)
+    response.set_cookie("sessionID", session_id)
+    return response
+
+
+def generate_session_id():
+    return str(uuid.uuid4())
+
+
 
 """
 PDF Management

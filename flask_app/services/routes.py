@@ -66,6 +66,7 @@ def view_chats():
     ]
     return jsonify(chat_data)
 
+
 #TODO: modify to clear chat since this function makes a new session
 @route_api.route('/new-session', methods=["GET"])
 def new_session():
@@ -79,10 +80,10 @@ def generate_session_id():
     return str(uuid.uuid4())
 
 
-
 """
 PDF Management
 """
+
 
 @route_api.route("/upload", methods=["POST"])
 def upload_and_store():

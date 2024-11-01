@@ -69,15 +69,6 @@
         return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     }
 
-    document.addEventListener("DOMContentLoaded", function () {
-        fetch('/view-chats').then(
-            response => response.json())
-            .then(data => {
-                    console.log(data)
-                }
-            )
-    })
-
 </script>
 {% endblock %}
 

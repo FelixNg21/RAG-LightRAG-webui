@@ -2,7 +2,6 @@ body {
     display: flex;
     flex-direction: column;
     height: 100vh;
-    font-family: Arial, sans-serif;
     overflow: hidden;
 }
 div[class='units']{
@@ -17,7 +16,6 @@ div[class='units']{
 #model-container{
     display: flex;
     flex-direction: row;
-    /*justify-content: flex-end;*/
     margin: auto;
     height: auto;
 }
@@ -31,7 +29,7 @@ div[class='units']{
 
 #chat-log {
     flex: 1;
-    max-height: 85vh;
+    max-height: calc(100vh - 136px);
     overflow-y: auto;
     border-radius: 10px;
     display: inline-block;
@@ -40,7 +38,7 @@ div[class='units']{
 
 .user-query, .chatbot-response {
     margin: 5px 10px 5px 10px;
-    padding: 7px;
+    padding: 6px;
 }
 
 .user-query {
@@ -49,11 +47,10 @@ div[class='units']{
     border-radius: 15px;
 }
 
-
 #query-form {
-    max-height: 15vh;
+    height: 100px;
     position: fixed;
-    width: 100%;
+    width: 100vw;
     margin: 0;
     display:flex;
     flex-direction: column;
@@ -71,7 +68,6 @@ div[class='units']{
 
 input[type="submit"] {
     padding: 5px;
-    /*border: none;*/
     border-radius: 10px;
     background-color: #007bff;
     color: white;
@@ -95,4 +91,29 @@ input[type="submit"]:hover {
 }
 .htmx-request.htmx-indicator{
     opacity:1;
+}
+
+#wrapper {
+    display: flex;
+    align-items: stretch;
+}
+
+#sidebar-wrapper {
+    min-height: 100vh;
+    width: 150px;
+    margin-left: -150px;
+    transition: margin 0.10s ease-out;
+}
+
+#wrapper.toggled #sidebar-wrapper {
+    margin-left: 0;
+}
+
+#page-content-wrapper {
+    width: 100vw;
+
+}
+
+.container-fluid {
+    padding: 0;
 }

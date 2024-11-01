@@ -55,11 +55,18 @@ def load_chat():
     ]
     return jsonify(chat_data)
 
+@route_api.route('/view-chats', methods=["GET"])
+def view_chats():
+    chat_logs = ChatLog.query.all()
+    chat_data = [
+        {"session_id": log.session_id, "user_query": log.user_query, "chatbot_response": log.chatbot_response}
+        for log in chat_logs
+    ]
+    return jsonify(chat_data)
 
 """
 PDF Management
 """
-
 
 @route_api.route("/upload", methods=["POST"])
 def upload_and_store():

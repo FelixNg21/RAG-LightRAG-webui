@@ -38,12 +38,12 @@ def inject_dict_for_all_templates():
     ]
     return dict(sidebar=nav)
 
-@app.context_processor
-def inject_dict_for_chat_html():
-    bar = [
-        {'text': "New Chat", "url": url_for('route_api.new_session')},
-    ]
-    return dict(chat_navbar=bar)
+# @app.context_processor
+# def inject_dict_for_chat_html():
+#     bar = [
+#         {'text': "New Chat", "url": url_for('route_api.new_session')},
+#     ]
+#     return dict(chat_navbar=bar)
 
 
 if __name__ == "__main__":

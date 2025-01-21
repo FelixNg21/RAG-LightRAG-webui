@@ -70,10 +70,10 @@ def view_chats():
 #TODO: modify to clear chat since this function makes a new session
 @route_api.route('/new-session', methods=["GET"])
 def new_session():
-    session_id = generate_session_id()
-    response = make_response("New session created", 200)
-    response.set_cookie("sessionID", session_id)
-    return response
+    # Generate a new session ID
+    new_session_id = generate_session_id()
+    return
+
 
 
 def generate_session_id():

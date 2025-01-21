@@ -7,13 +7,12 @@
 
 {% block chatbar %}
 <ul class="navbar-nav mr-auto">
-    {% for item in chat_navbar %}
-    {% if item.url %}
     <li class="nav-item">
-        <a class="nav-link" href="{{ item.url }}">{{ item.text }}</a>
+        <a class="nav-link" hx-on:click="document.querySelector('#chat-log').innerHTML = ''; saveChatToLocalStoragee">New Chat</a>
     </li>
-    {% endif %}
-    {% endfor %}
+    <li class="nav-item">
+        <a class="nav-link" hx-on:click="localStorage.removeItem('sessionID')">Clear SessionID</a>
+    </li>
 </ul>
 {% endblock %}
 
@@ -47,24 +46,33 @@
         document.cookie = `sessionID=${sessionID}`;
 
         // Load chat log from server
+        loadChatFromSessionID(sessionID);
+
+        // // Save chat log to local Storage
+        // saveChatToLocalStorage()
+
+    });
+
+    function saveChatToLocalStorage() {
+        const observer = new MutationObserver(() => {
+            localStorage.setItem('chatLog', document.getElementById('chat-log').innerHTML);
+        });
+        observer.observe(document.getElementById('chat-log'), {childList: true, subtree: true});
+    }
+
+    function loadChatFromSessionID(sessionID) {
         fetch(`/load-chat?session_id=${sessionID}`)
             .then(response => response.json())
             .then(data => {
                 const chatLogDiv = document.getElementById('chat-log');
+                chatLogDiv.innerHTML = '';
                 data.forEach(log => {
                     chatLogDiv.innerHTML += `<span class='user-query'>${log.user_query}</span>`;
                     chatLogDiv.innerHTML += `<div class='chatbot-response'>${log.chatbot_response}</div>`;
                 });
                 chatLogDiv.scrollTop = chatLogDiv.scrollHeight;
             });
-
-        // Save chat log to local Storage
-        const observer = new MutationObserver(() => {
-            localStorage.setItem('chatLog', document.getElementById('chat-log').innerHTML);
-        });
-        observer.observe(document.getElementById('chat-log'), {childList: true, subtree: true});
-    });
-
+    }
     function generateSessionID() {
         return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     }

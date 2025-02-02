@@ -1,0 +1,2 @@
+gragphrag init --root ./ragtest
+graphrag index --root ./ragtest

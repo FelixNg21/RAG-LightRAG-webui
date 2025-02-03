@@ -174,6 +174,7 @@ def clear_db():
     if request.method != "POST":
         return "Method not allowed"
     document_loader.clear_database()
+    return "Database cleared"
 
 
 """

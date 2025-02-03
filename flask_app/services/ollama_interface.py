@@ -15,7 +15,7 @@ Answer the question based on the above context: {question}
 
 
 def extract_model_names(json):
-    return [model['name'] for model in json['models']]
+    return [model['model'] for model in json['models']]
 
 
 class OllamaInterface:

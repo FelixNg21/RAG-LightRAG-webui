@@ -47,4 +47,4 @@ def inject_dict_for_chat_html():
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', debug=True)
+    app.run(host='0.0.0.0', debug=True, port=5000)

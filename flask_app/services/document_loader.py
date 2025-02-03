@@ -5,6 +5,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.schema.document import Document
 from langchain_chroma import Chroma
 from chromadb import PersistentClient
+import os
 import shutil
 
 
@@ -75,6 +76,6 @@ class DocumentLoader:
         try:
             chroma_client = PersistentClient(self.chrome_path)
             chroma_client.delete_collection(self.collection_name)
-            shutil.rmtree(self.chrome_path)
+            # os.remove(self.chrome_path)
         except Exception as e:
             raise e

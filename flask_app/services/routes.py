@@ -68,12 +68,13 @@ def view_chats():
 
 
 #TODO: modify to clear chat since this function makes a new session
-@route_api.route('/new-session', methods=["GET"])
+@route_api.route('/new-session', methods=["POST"])
 def new_session():
-    session_id = generate_session_id()
-    response = make_response("New session created", 200)
-    response.set_cookie("sessionID", session_id)
+    response = make_response('New Chat', 200)
+    response.headers['HX-Trigger'] = 'newSession'
     return response
+
+    # return jsonify({"message": "New session created", "session_id": new_session_id}), 200
 
 
 def generate_session_id():

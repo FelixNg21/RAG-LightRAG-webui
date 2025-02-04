@@ -10,7 +10,7 @@
     {% for item in chat_navbar %}
     {% if item.url %}
     <li class="nav-item">
-        <a class="nav-link" href="{{ item.url }}">{{ item.text }}</a>
+        <a class="nav-link" hx-post="{{ item.url }}">{{ item.text }}</a>
     </li>
     {% endif %}
     {% endfor %}
@@ -45,7 +45,6 @@
         const sessionID = localStorage.getItem('sessionID') || generateSessionID();
         localStorage.setItem('sessionID', sessionID);
         document.cookie = `sessionID=${sessionID}`;
-
         // Load chat log from server
         fetch(`/load-chat?session_id=${sessionID}`)
             .then(response => response.json())
@@ -68,6 +67,32 @@
     function generateSessionID() {
         return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     }
+
+    function clearChatLog(){
+        const chatLogDiv = document.getElementById('chat-log');
+        chatLogDiv.innerHTML = '';
+        localStorage.removeItem('chatLog');
+    }
+
+    document.addEventListener('newSession', function () {
+        const newSessionID = generateSessionID();
+        localStorage.setItem('sessionID', newSessionID);
+        document.cookie = `sessionID=${newSessionID}`;
+
+        clearChatLog();
+
+        fetch(`/load-chat?session_id=${newSessionID}`)
+            .then(response => response.json())
+            .then(data => {
+                const chatLogDiv = document.getElementById('chat-log');
+                data.forEach(log => {
+                    chatLogDiv.innerHTML += `<span class='user-query'>${log.user_query}</span>`;
+                    chatLogDiv.innerHTML += `<div class='chatbot-response'>${log.chatbot_response}</div>`;
+                });
+                chatLogDiv.scrollTop = chatLogDiv.scrollHeight;
+            });
+
+    });
 
 </script>
 {% endblock %}

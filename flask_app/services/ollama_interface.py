@@ -19,16 +19,14 @@ def extract_model_names(json):
 
 
 class OllamaInterface:
-    def __init__(self, model: str):
+    def __init__(self, model: str, db: Chroma, collection_name="documents"):
 
         # self.ollama = ollama.Client("http://ollama:11434")
         self.ollama = ollama
         self.ollama_model_str = model
         self.chroma_path = CHROMA_PATH
-        self.collection_name = "documents"
-        self.db = Chroma(persist_directory=self.chroma_path,
-                         embedding_function=get_embedding_function(),
-                         collection_name=self.collection_name)
+        self.collection_name = collection_name
+        self.db = db
         # load LLM into memory
         self.ollama.generate(model=self.ollama_model_str,
                              keep_alive=-1)
@@ -57,10 +55,10 @@ class OllamaInterface:
     def get_db(self):
         return self.db
 
-    def restart_db(self):
-        self.db = Chroma(persist_directory=self.chroma_path,
-                         embedding_function=get_embedding_function(),
-                         collection_name=self.collection_name)
+    # def restart_db(self):
+    #     self.db = Chroma(persist_directory=self.chroma_path,
+    #                      embedding_function=get_embedding_function(),
+    #                      collection_name=self.collection_name)
 
     def get_collection_name(self):
         return self.collection_name

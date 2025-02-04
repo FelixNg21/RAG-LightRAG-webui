@@ -4,9 +4,11 @@ from .ollama_interface import OllamaInterface
 import os
 from .chatlog import db, ChatLog
 import uuid
+from .chroma_db import Database
 
-ollama_interface = OllamaInterface(model="mistral")
-document_loader = DocumentLoader(ollama_interface.get_db())
+chroma_db = Database(chroma_path="chroma", collection_name="documents")
+ollama_interface = OllamaInterface(model="deepseek-r1:14b", db=chroma_db.db)
+document_loader = DocumentLoader(db=chroma_db.db, collection_name="documents")
 route_api = Blueprint("route_api", __name__)
 
 """
@@ -23,7 +25,7 @@ async def query():
             print("No query text")
 
         response_text = chat(query_text)
-
+        print(response_text)
         # Save chat to database
         chat_log = ChatLog(session_id=session_id, user_query=query_text, chatbot_response=response_text)
         db.session.add(chat_log)
@@ -166,7 +168,10 @@ def delete():
 def reinitialize_db():
     if request.method != "POST":
         return "Method not allowed"
-    ollama_interface.restart_db()
+    try:
+        chroma_db.restart_database()
+    except:
+        return "Error reinitializing database"
     return "Database reinitialized"
 
 
@@ -174,7 +179,11 @@ def reinitialize_db():
 def clear_db():
     if request.method != "POST":
         return "Method not allowed"
-    document_loader.clear_database()
+    try:
+        chroma_db.clear_database()
+    except:
+        return "Error clearing database"
+
     return "Database cleared"
 
 

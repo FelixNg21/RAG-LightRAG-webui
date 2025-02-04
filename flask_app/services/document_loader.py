@@ -4,9 +4,6 @@ from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.schema.document import Document
 from langchain_chroma import Chroma
-from chromadb import PersistentClient
-import os
-import shutil
 
 
 class DocumentLoader:
@@ -33,8 +30,7 @@ class DocumentLoader:
         )
         return text_splitter.split_documents(documents)
 
-    def add_to_chroma(self, chunks: list[Document], ollama_interface):
-        self.db = ollama_interface.get_db()
+    def add_to_chroma(self, chunks: list[Document]):
         chunks_with_ids = self.calculate_chunk_ids(chunks)
 
         existing_items = self.db.get(include=[])
@@ -72,10 +68,3 @@ class DocumentLoader:
             chunk.metadata["id"] = chunk_id
         return chunks
 
-    def clear_database(self):
-        try:
-            chroma_client = PersistentClient(self.chrome_path)
-            chroma_client.delete_collection(self.collection_name)
-            # os.remove(self.chrome_path)
-        except Exception as e:
-            raise e

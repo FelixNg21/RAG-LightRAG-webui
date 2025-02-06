@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<title>Chat</title>
+<link rel="stylesheet" href="{{url_for('static', filename='css/main.css') }}">
+{% endblock %}
+
+{% block chatbar %}
+<ul class="navbar-nav mr-auto">
+    {% for item in chat_navbar %}
+    {% if item.url %}
+    <li class="nav-item">
+        <a class="nav-link" hx-post="{{ item.url }}">{{ item.text }}</a>
+    </li>
+    {% endif %}
+    {% endfor %}
+</ul>
+{% endblock %}
+
+{% block content %}
+<div id="chat-log">
+</div>
+<form hx-on::after-request="if(event.detail.successful) this.reset()"
+      hx-post="/query-lightrag"
+      hx-target="#chat-log"
+      hx-swap="beforeend"
+      hx-validate="true"
+      id="query-form"
+      hx-trigger="keydown[key=='Enter'&&!shiftKey]:submit"
+      hx-on:keydown="(event.keyCode==13&&!event.shiftKey)?event.preventDefault():null"
+>
+    <label for="query-text"></label>
+    <textarea id="query-text" name="query" placeholder="Enter your query here..."
+              onkeyup="this.setCustomValidity('')"
+              hx-on:htmx:validation:validate="if(this.value==''){
+            this.setCustomValidity('Please enter a query');
+            htmx.find('#query-form').reportValidity()
+          }"
+    ></textarea>
+</form>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const sessionID = localStorage.getItem('sessionID') || generateSessionID();
+        localStorage.setItem('sessionID', sessionID);
+        document.cookie = `sessionID=${sessionID}`;
+        // Load chat log from server
+        fetch(`/load-chat?session_id=${sessionID}`)
+            .then(response => response.json())
+            .then(data => {
+                const chatLogDiv = document.getElementById('chat-log');
+                data.forEach(log => {
+                    chatLogDiv.innerHTML += `<span class='user-query'>${log.user_query}</span>`;
+                    chatLogDiv.innerHTML += `<div class='chatbot-response'>${log.chatbot_response}</div>`;
+                });
+                chatLogDiv.scrollTop = chatLogDiv.scrollHeight;
+            });
+
+        // Save chat log to local Storage
+        const observer = new MutationObserver(() => {
+            localStorage.setItem('chatLog', document.getElementById('chat-log').innerHTML);
+        });
+        observer.observe(document.getElementById('chat-log'), {childList: true, subtree: true});
+    });
+
+    function generateSessionID() {
+        return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    }
+
+    function clearChatLog(){
+        const chatLogDiv = document.getElementById('chat-log');
+        chatLogDiv.innerHTML = '';
+        localStorage.removeItem('chatLog');
+    }
+
+    document.addEventListener('newSession', function () {
+        const newSessionID = generateSessionID();
+        localStorage.setItem('sessionID', newSessionID);
+        document.cookie = `sessionID=${newSessionID}`;
+
+        clearChatLog();
+
+        fetch(`/load-chat?session_id=${newSessionID}`)
+            .then(response => response.json())
+            .then(data => {
+                const chatLogDiv = document.getElementById('chat-log');
+                data.forEach(log => {
+                    chatLogDiv.innerHTML += `<span class='user-query'>${log.user_query}</span>`;
+                    chatLogDiv.innerHTML += `<div class='chatbot-response'>${log.chatbot_response}</div>`;
+                });
+                chatLogDiv.scrollTop = chatLogDiv.scrollHeight;
+            });
+
+    });
+
+</script>
+{% endblock %}
+

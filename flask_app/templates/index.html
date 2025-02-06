@@ -29,11 +29,47 @@
              hx-target="#files"></div>
 
         <div id="files"></div>
-        <button>Vectorize</button>
+
         <button hx-post="/delete" hx-include=[name='file']>Delete selected files</button>
         <button hx-post="/clear-db" hx-confirm="Are you sure?">Clear database</button>
+        <br>
+        <button>Vectorize</button>
         <div id="vectorize_message"></div>
     </form>
-
 </div>
+
+<div class="units">
+    <h5>Upload (LightRAG)</h5>
+    <form id="lightrag-form"
+          hx-encoding="multipart/form-data"
+          hx-post="/upload_lightrag"
+          hx-target="#upload_message_lightrag"
+          hx-swap="textContent">
+
+        <input type="file" name="files" multiple>
+        <button id="upload_lightrag_button">Upload</button>
+        <div id="upload_message_lightrag"></div>
+    </form>
+</div>
+
+
+<div class="units">
+    <form id="lightrag-insert-form"
+          hx-post="/insert-lightrag"
+          hx-target="#insert_message_lightrag"
+          hx-swap="textContent">
+        <h5>Uploaded Files</h5>
+        <div hx-get="/listfiles-lightrag" hx-trigger="load, newFileUpload from:body, fileDeleted from:body" hx-swap="innerHTML"
+             hx-target="#files-lightrag"></div>
+
+        <div id="files-lightrag"></div>
+
+        <button hx-post="/delete-lightrag" hx-include=[name='file-lightrag']>Delete selected files</button>
+        <button hx-post="/clear-db-lightrag" hx-confirm="Are you sure?">Clear database</button>
+        <br>
+        <button>Insert</button>
+        <div id="insert_message_lightrag"></div>
+    </form>
+</div>
+
 {% endblock %}

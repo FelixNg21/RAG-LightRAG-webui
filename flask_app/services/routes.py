@@ -27,40 +27,58 @@ Chat Management
 async def query():
     if request.method == 'POST':
         query_text = request.form.get("query")
-        session_id = request.cookies.get("sessionID")
-        if query_text == '':
-            print("No query text")
 
-        response_text = chat(query_text)
+        if not query_text:
+            return "No query text", 400
 
-        # Save chat to database
-        add_chat_to_db(session_id, query_text, response_text)
+        # Return user query immediately
+        user_query_div = div_generator("user-query", f'{query_text}')
 
-        response = ''
-        response += div_generator("user-query", f'{query_text}')
-        response += div_generator("chatbot-response", f'{response_text}')
+        # Use HTMX to load the response asynchronously
+        response_div = f'''
+            {user_query_div}
+            <div id="chatbot-response" hx-get="/fetch_response?query={query_text}" hx-trigger="load"></div>
+        '''
+        return response_div
 
-        return response
+
+@route_api.route("/fetch_response", methods=["GET"])
+async def fetch_response():
+    query_text = request.args.get("query")
+    response_text = chat(query_text)
+
+    session_id = request.cookies.get("sessionID")
+    add_chat_to_db(session_id, query_text, response_text)
+
+    return div_generator("chatbot-response", f'{response_text}')
 
 
 @route_api.route("/query-lightrag", methods=["POST"])
 async def query_lightrag():
     if request.method == 'POST':
         query_text = request.form.get("query")
-        session_id = request.cookies.get("sessionID")
-        if query_text == '':
-            print("No query text")
 
-        response_text = chat_lightrag(query_text)
+        if not query_text:
+            return "No query text", 400
 
-        # Save chat to database
-        add_chat_to_db(session_id, query_text, response_text)
+        # Return user query immediately
+        user_query_div = div_generator("user-query", f'{query_text}')
 
-        response = ''
-        response += div_generator("user-query", f'{query_text}')
-        response += div_generator("chatbot-response", f'{response_text}')
+        # Use HTMX to load the response asynchronously
+        response_div = f'''
+                    {user_query_div}
+                    <div id="chatbot-response-lightrag" hx-get="/fetch_response?query={query_text}" hx-trigger="load"></div>
+                '''
+        return response_div
 
-        return response
+async def fetch_response_lightrag():
+    query_text = request.args.get("query")
+    response_text = chat_lightrag(query_text)
+
+    session_id = request.cookies.get("sessionID")
+    add_chat_to_db(session_id, query_text, response_text)
+
+    return div_generator("chatbot-response", f'{response_text}')
 
 
 def add_chat_to_db(session_id, user_query, chatbot_response):
@@ -75,13 +93,11 @@ def div_generator(classname, text):
 
 def chat(query_text):
     result = ollama_interface.query_ollama(query_text)
-
     return result['message']['content']
 
 
 def chat_lightrag(query_text):
     result = lightrag.query(query_text)
-    print(result)
     return result
 
 
@@ -175,7 +191,6 @@ def vectorize():
     try:
         documents = document_loader.load_documents()
 
-        print(documents)
         chunks = document_loader.split_documents(documents)
         document_loader.add_to_chroma(chunks)
     except:
@@ -282,7 +297,6 @@ def insert():
         try:
             lightrag.ingest(file)
         except Exception as e:
-            print(e)
             return f"Error processing file {file}"
 
     return "Files inserted successfully"

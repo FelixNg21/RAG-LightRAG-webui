@@ -11,8 +11,10 @@ class LightRagWrapper:
 
         if not os.path.exists(working_dir):
             os.mkdir(working_dir)
+
         if llm_model_kwargs is None:
             llm_model_kwargs = llm_model_kwargs
+
         self.rag = LightRAG(
             working_dir=working_dir,
             llm_model_func=ollama_model_complete,

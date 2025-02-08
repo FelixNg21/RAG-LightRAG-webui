@@ -32,11 +32,9 @@ async def query():
             print("No query text")
 
         response_text = chat(query_text)
-        print(response_text)
+
         # Save chat to database
-        chat_log = ChatLog(session_id=session_id, user_query=query_text, chatbot_response=response_text)
-        db.session.add(chat_log)
-        db.session.commit()
+        add_chat_to_db(session_id, query_text, response_text)
 
         response = ''
         response += div_generator("user-query", f'{query_text}')
@@ -54,18 +52,21 @@ async def query_lightrag():
             print("No query text")
 
         response_text = chat_lightrag(query_text)
-        print(query_text)
-        print(response_text)
+
         # Save chat to database
-        chat_log = ChatLog(session_id=session_id, user_query=query_text, chatbot_response=response_text)
-        db.session.add(chat_log)
-        db.session.commit()
+        add_chat_to_db(session_id, query_text, response_text)
 
         response = ''
         response += div_generator("user-query", f'{query_text}')
         response += div_generator("chatbot-response", f'{response_text}')
 
         return response
+
+
+def add_chat_to_db(session_id, user_query, chatbot_response):
+    chat_log = ChatLog(session_id=session_id, user_query=user_query, chatbot_response=chatbot_response)
+    db.session.add(chat_log)
+    db.session.commit()
 
 
 def div_generator(classname, text):

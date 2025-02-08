@@ -30,12 +30,21 @@ class OllamaInterface:
         self.ollama.generate(model=self.ollama_model_str,
                              keep_alive=-1)
 
-    def query_ollama(self, prompt: str):
+    def query(self, prompt: str, use_context: bool = True, history: list = None, history_limit: int = 5):
+
         try:
-            results = self.db.similarity_search_with_score(prompt, k=5)
-            context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
-            prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
-            prompt_updated = prompt_template.format(context=context_text, question=prompt)
+            if use_context:
+                results = self.db.similarity_search_with_score(prompt, k=5)
+                context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
+                prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
+                prompt_updated = prompt_template.format(context=context_text, question=prompt)
+            else:
+                prompt_updated = prompt
+            if history:
+                chat_history = history + [{"role": "user", "content": prompt_updated}]
+            else:
+                chat_history = [{"role": "user", "content": prompt_updated}]
+            chat_history = chat_history[-(history_limit * 2):]
             return self.ollama.chat(
                 model=self.ollama_model_str,
                 messages=chat_history,

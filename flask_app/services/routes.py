@@ -10,7 +10,7 @@ import nest_asyncio
 
 nest_asyncio.apply()
 
-lightrag = LightRagWrapper(working_dir="lightrag_docs", llm_model_name="deepseek-r1:14b",
+lightrag = LightRagWrapper(working_dir="lightrag_docs", llm_model_name="deepseek-r1:8b",
                            doc_dir="./data/pdfs-lightrag")
 chroma_db = Database(chroma_path="chroma", collection_name="documents")
 ollama_interface = OllamaInterface(model="deepseek-r1:14b", db=chroma_db.db)

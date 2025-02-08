@@ -11,9 +11,8 @@ class DocumentLoader:
     DocumentLoader class to load and split documents for use in RAG application
     """
 
-    def __init__(self, db: Chroma, collection_name="documents"):
-        self.data_path = "data/pdfs"
-        self.chrome_path = "chroma"
+    def __init__(self, db: Chroma, collection_name="documents", data_path="data/pdfs", ):
+        self.data_path = data_path
         self.loader = PyPDFDirectoryLoader(self.data_path)
         self.db = db
         self.collection_name = collection_name

@@ -1,5 +1,4 @@
 import ollama
-from .get_embedding_func import get_embedding_function
 from langchain_chroma import Chroma
 from langchain.prompts import ChatPromptTemplate
 
@@ -54,11 +53,6 @@ class OllamaInterface:
 
     def get_db(self):
         return self.db
-
-    # def restart_db(self):
-    #     self.db = Chroma(persist_directory=self.chroma_path,
-    #                      embedding_function=get_embedding_function(),
-    #                      collection_name=self.collection_name)
 
     def get_collection_name(self):
         return self.collection_name

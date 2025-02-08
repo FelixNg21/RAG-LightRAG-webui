@@ -38,12 +38,7 @@ class OllamaInterface:
             prompt_updated = prompt_template.format(context=context_text, question=prompt)
             return self.ollama.chat(
                 model=self.ollama_model_str,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt_updated,
-                    }
-                ],
+                messages=chat_history,
                 stream=False,
                 keep_alive=-1
             )

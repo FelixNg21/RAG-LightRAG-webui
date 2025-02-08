@@ -92,7 +92,7 @@ def div_generator(classname, text):
 
 
 def chat(query_text):
-    result = ollama_interface.query_ollama(query_text)
+    result = ollama_interface.query(query_text)
     return result['message']['content']
 
 

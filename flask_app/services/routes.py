@@ -1,12 +1,21 @@
 from flask import request, Blueprint, make_response, jsonify, url_for
 from .document_loader import DocumentLoader
 from .ollama_interface import OllamaInterface
+from .lightrag_wrapper import LightRagWrapper
 import os
 from .chatlog import db, ChatLog
 import uuid
+from .chroma_db import Database
+import nest_asyncio
 
-ollama_interface = OllamaInterface(model="mistral")
-document_loader = DocumentLoader(ollama_interface.get_db())
+nest_asyncio.apply()
+
+lightrag = LightRagWrapper(working_dir="lightrag_docs", llm_model_name="deepseek-r1:8b",
+                           doc_dir="./data/pdfs-lightrag")
+chroma_db = Database(chroma_path="chroma", collection_name="documents")
+ollama_interface = OllamaInterface(model="deepseek-r1:14b", db=chroma_db.db)
+document_loader = DocumentLoader(db=chroma_db.db, collection_name="documents")
+document_loader_lightrag = DocumentLoader
 route_api = Blueprint("route_api", __name__)
 
 """
@@ -18,22 +27,64 @@ Chat Management
 async def query():
     if request.method == 'POST':
         query_text = request.form.get("query")
-        session_id = request.cookies.get("sessionID")
-        if query_text == '':
-            print("No query text")
 
-        response_text = chat(query_text)
+        if not query_text:
+            return "No query text", 400
 
-        # Save chat to database
-        chat_log = ChatLog(session_id=session_id, user_query=query_text, chatbot_response=response_text)
-        db.session.add(chat_log)
-        db.session.commit()
+        # Return user query immediately
+        user_query_div = div_generator("user-query", f'{query_text}')
 
-        response = ''
-        response += div_generator("user-query", f'{query_text}')
-        response += div_generator("chatbot-response", f'{response_text}')
+        # Use HTMX to load the response asynchronously
+        response_div = f'''
+            {user_query_div}
+            <div id="chatbot-response" hx-get="/fetch_response?query={query_text}" hx-trigger="load"></div>
+        '''
+        return response_div
 
-        return response
+
+@route_api.route("/fetch_response", methods=["GET"])
+async def fetch_response():
+    query_text = request.args.get("query")
+    response_text = chat(query_text)
+
+    session_id = request.cookies.get("sessionID")
+    add_chat_to_db(session_id, query_text, response_text)
+
+    return div_generator("chatbot-response", f'{response_text}')
+
+
+@route_api.route("/query-lightrag", methods=["POST"])
+async def query_lightrag():
+    if request.method == 'POST':
+        query_text = request.form.get("query")
+
+        if not query_text:
+            return "No query text", 400
+
+        # Return user query immediately
+        user_query_div = div_generator("user-query", f'{query_text}')
+
+        # Use HTMX to load the response asynchronously
+        response_div = f'''
+                    {user_query_div}
+                    <div id="chatbot-response-lightrag" hx-get="/fetch_response?query={query_text}" hx-trigger="load"></div>
+                '''
+        return response_div
+
+async def fetch_response_lightrag():
+    query_text = request.args.get("query")
+    response_text = chat_lightrag(query_text)
+
+    session_id = request.cookies.get("sessionID")
+    add_chat_to_db(session_id, query_text, response_text)
+
+    return div_generator("chatbot-response", f'{response_text}')
+
+
+def add_chat_to_db(session_id, user_query, chatbot_response):
+    chat_log = ChatLog(session_id=session_id, user_query=user_query, chatbot_response=chatbot_response)
+    db.session.add(chat_log)
+    db.session.commit()
 
 
 def div_generator(classname, text):
@@ -42,8 +93,12 @@ def div_generator(classname, text):
 
 def chat(query_text):
     result = ollama_interface.query_ollama(query_text)
-
     return result['message']['content']
+
+
+def chat_lightrag(query_text):
+    result = lightrag.query(query_text)
+    return result
 
 
 @route_api.route('/load-chat', methods=["GET"])
@@ -68,12 +123,13 @@ def view_chats():
 
 
 #TODO: modify to clear chat since this function makes a new session
-@route_api.route('/new-session', methods=["GET"])
+@route_api.route('/new-session', methods=["POST"])
 def new_session():
-    session_id = generate_session_id()
-    response = make_response("New session created", 200)
-    response.set_cookie("sessionID", session_id)
+    response = make_response('New Chat', 200)
+    response.headers['HX-Trigger'] = 'newSession'
     return response
+
+    # return jsonify({"message": "New session created", "session_id": new_session_id}), 200
 
 
 def generate_session_id():
@@ -102,7 +158,6 @@ def upload_and_store():
         if file and file.filename.endswith(".pdf"):
             os.makedirs("data/pdfs", exist_ok=True)
             file.save(f"data/pdfs/{file.filename}")
-
         else:
             return "File must be a pdf"
 
@@ -135,8 +190,9 @@ def vectorize():
         return "Method not allowed"
     try:
         documents = document_loader.load_documents()
+
         chunks = document_loader.split_documents(documents)
-        document_loader.add_to_chroma(chunks, ollama_interface)
+        document_loader.add_to_chroma(chunks)
     except:
         reinitialize_db()
 
@@ -165,7 +221,10 @@ def delete():
 def reinitialize_db():
     if request.method != "POST":
         return "Method not allowed"
-    ollama_interface.restart_db()
+    try:
+        chroma_db.restart_database()
+    except:
+        return "Error reinitializing database"
     return "Database reinitialized"
 
 
@@ -173,7 +232,74 @@ def reinitialize_db():
 def clear_db():
     if request.method != "POST":
         return "Method not allowed"
-    document_loader.clear_database()
+    try:
+        chroma_db.clear_database()
+    except:
+        return "Error clearing database"
+
+    return "Database cleared"
+
+
+"""
+LightRAG Management
+"""
+
+
+@route_api.route("/upload_lightrag", methods=["POST"])
+def upload_lightrag():
+    if request.method != "POST":
+        return "Method not allowed"
+    if 'files' not in request.files:
+        return "No file part"
+
+    files = request.files.getlist("files")
+
+    for file in files:
+        if file.filename == '':
+            return "No selected file"
+        if file and file.filename.endswith(".pdf"):
+            # should be unnecessary as it will be processed into a knowledge graph
+            os.makedirs("data/pdfs-lightrag", exist_ok=True)
+            file.save(f"data/pdfs-lightrag/{file.filename}")
+
+    if len(files) == 1:
+        response = make_response("File uploaded successfully", 200)
+        response.headers['HX-Trigger'] = 'newFileUpload'
+        return response
+    response = make_response("File(s) uploaded successfully", 200)
+    response.headers['HX-Trigger'] = 'newFileUpload'
+    return response
+
+
+@route_api.route("/listfiles-lightrag", methods=["GET"])
+def list_files_lightrag():
+    if request.method != "GET":
+        return "Method not allowed"
+    files = os.listdir("data/pdfs-lightrag")
+    response = ''
+    if not files:
+        return "No files uploaded"
+    for file in files:
+        response += f"<input type='checkbox' name='file-lightrag' value='{file}' hx-trigger='true'> {file}<br>"
+    return response
+
+
+@route_api.route("/insert-lightrag", methods=["POST"])
+def insert():
+    # takes in a list of pdf files and vectorizes them
+    if request.method != "POST":
+        return "Method not allowed"
+
+    files = request.form.getlist("file-lightrag")
+    if len(files) == 0:
+        return "No files selected"
+    for file in files:
+        try:
+            lightrag.ingest(file)
+        except Exception as e:
+            return f"Error processing file {file}"
+
+    return "Files inserted successfully"
 
 
 """

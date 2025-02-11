@@ -4,8 +4,6 @@ from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.schema.document import Document
 from langchain_chroma import Chroma
-from chromadb import PersistentClient
-import shutil
 
 
 class DocumentLoader:
@@ -13,9 +11,8 @@ class DocumentLoader:
     DocumentLoader class to load and split documents for use in RAG application
     """
 
-    def __init__(self, db: Chroma, collection_name="documents"):
-        self.data_path = "data/pdfs"
-        self.chrome_path = "chroma"
+    def __init__(self, db: Chroma, collection_name="documents", data_path="data/pdfs", ):
+        self.data_path = data_path
         self.loader = PyPDFDirectoryLoader(self.data_path)
         self.db = db
         self.collection_name = collection_name
@@ -32,8 +29,7 @@ class DocumentLoader:
         )
         return text_splitter.split_documents(documents)
 
-    def add_to_chroma(self, chunks: list[Document], ollama_interface):
-        self.db = ollama_interface.get_db()
+    def add_to_chroma(self, chunks: list[Document]):
         chunks_with_ids = self.calculate_chunk_ids(chunks)
 
         existing_items = self.db.get(include=[])
@@ -71,10 +67,3 @@ class DocumentLoader:
             chunk.metadata["id"] = chunk_id
         return chunks
 
-    def clear_database(self):
-        try:
-            chroma_client = PersistentClient(self.chrome_path)
-            chroma_client.delete_collection(self.collection_name)
-            shutil.rmtree(self.chrome_path)
-        except Exception as e:
-            raise e

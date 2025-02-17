@@ -92,7 +92,8 @@ def div_generator(classname, text):
 
 
 def chat(query_text):
-    result = ollama_interface.query(query_text)
+    context = ollama_interface.get_context(query_text)
+    result = ollama_interface.query(query_text, context=context)
     return result['message']['content']
 
 

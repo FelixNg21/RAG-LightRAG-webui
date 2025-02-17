@@ -30,12 +30,11 @@ class OllamaInterface:
         self.ollama.generate(model=self.ollama_model_str,
                              keep_alive=-1)
 
-    def query(self, prompt: str, use_context: bool = True, history: list = None, history_limit: int = 5):
+    def query(self, prompt: str, use_context: bool = True, history: list = None, history_limit: int = 5, context: list = None):
 
         try:
             if use_context:
-                results = self.db.similarity_search_with_score(prompt, k=5)
-                context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
+                context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in context])
                 prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
                 prompt_updated = prompt_template.format(context=context_text, question=prompt)
             else:
@@ -54,6 +53,9 @@ class OllamaInterface:
         except Exception as e:
             print(f"Error querying Ollama: {e}")
             return {"message": {"content": "An error occurred. Please try again."}}
+
+    def get_context(self, prompt: str):
+        return self.db.similarity_search_with_score(prompt)
 
     def get_db(self):
         return self.db
@@ -80,4 +82,3 @@ class OllamaInterface:
         self.ollama_model_str = model_name
         self.ollama.generate(model=self.ollama_model_str,
                              keep_alive=-1)
-

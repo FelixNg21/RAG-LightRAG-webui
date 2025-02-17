@@ -1,8 +1,10 @@
 import os
-from lightrag import LightRAG, QueryParam
+from lightrag.lightrag import LightRAG
+from lightrag.base import QueryParam
 from lightrag.llm.ollama import ollama_model_complete, ollama_embed
 from lightrag.utils import EmbeddingFunc
 import textract
+from typing import Literal
 
 llm_model_kwargs = {"host": "http://localhost:11434", "options": {"num_ctx": 32768}}
 class LightRagWrapper:
@@ -36,5 +38,11 @@ class LightRagWrapper:
         text_content = textract.process(self.doc_dir+"/"+path)
         self.rag.insert(text_content.decode("utf-8"))
 
-    def query(self, query_text, mode: str = "hybrid"):
-        return self.rag.query(query_text, param=QueryParam(mode=mode))
+    def query(self, query_text, history: list = None, mode: Literal["local", "global", "hybrid", "naive","mix"]='hybrid'):
+        return self.rag.query(query_text, param=QueryParam(mode=mode, conversation_history=history))
+
+    def delete_by_doc_id(self, doc_id):
+        self.rag.delete_by_doc_id(doc_id)
+
+    def delete_by_entity_id(self, entity_id):
+        self.rag.delete_by_entity(entity_id)

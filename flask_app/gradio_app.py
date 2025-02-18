@@ -1,175 +1,32 @@
 import gradio as gr
-from flask import Flask
-from services.lightrag_wrapper import LightRagWrapper
-from services.ollama_interface import OllamaInterface
-from services.chroma_db import Database
-from services.document_loader import DocumentLoader
 from gradio_pdf import PDF
 import os
-import shutil
-import re
-from services.chatlog import ChatHistory, ChatMessage, db
-from services.utils import generate_session_id
 
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chat_log.db'
-db.init_app(app)
-
-with app.app_context():
-    db.create_all()
-
-lightrag = LightRagWrapper(working_dir="lightrag_docs", llm_model_name="deepseek-r1:8b",
-                           doc_dir="./data/pdfs")
-chroma_db = Database(chroma_path="chroma", collection_name="documents")
-ollama = OllamaInterface("deepseek-r1:8b", chroma_db.db)
-document_loader = DocumentLoader(chroma_db.db, collection_name="documents", data_path="data/pdfs")
-
-SAVE_DIR = "data/pdfs"
-os.makedirs(SAVE_DIR, exist_ok=True)
-
-
-# File Management
-def save_files(files):
-    if not files:
-        return "No files uploaded"
-    saved_files = []
-    for file in files:
-        file_path = os.path.join(SAVE_DIR, os.path.basename(file.name))
-        shutil.move(file.name, file_path)
-        saved_files.append(file.name)
-    return "Files uploaded: " + str(saved_files)
-
-
-def update_files():
-    updated_files = list_files()
-    return gr.CheckboxGroup(label="Uploaded Files", choices=updated_files)
-
-
-def list_files():
-    files = os.listdir(SAVE_DIR)
-    return files if files else "No files uploaded"
-
-
-def process_files(selected_files):
-    print(selected_files)
-    if not selected_files:
-        return "No files selected"
-    try:
-        # Processing for NaiveRAG
-        documents = document_loader.load_documents(selected_files)
-        chunks = document_loader.split_documents(documents)
-        document_loader.add_to_chroma(chunks)
-
-        # Processing for LightRAG
-        for file in selected_files:
-            print('Ingesting file:', file)
-            lightrag.ingest(file)
-
-    except Exception as e:
-        return "Error processing files: " + str(e)
-
-    return "Files processed selected files: " + str(selected_files)
-
-
-# Chat functions
-def user(user_message, history: list, rag_type):
-    history = history or []
-    history = history + [{"role": "user", "content": user_message}]
-    return "", history, user_message, rag_type
-
-
-def get_context(history, user_message, rag_type):
-    context = ollama.get_context(user_message)
-    return context, history, user_message, rag_type
-
-
-def handle_reasoning(model_response):
-    if "<think>" in model_response:
-        thinking = re.findall(r"<think>.*?</think>", model_response, flags=re.DOTALL)
-        model_response = re.sub(r"<think>.*?</think>", "", model_response, flags=re.DOTALL)
-        return model_response, thinking
-    return model_response, None
-
-
-def assistant(history: list, user_message, rag_type, context):
-    if rag_type == "LightRAG":
-        content = lightrag.query(user_message, history=history)
-    else:
-        response = ollama.query(user_message, use_context=True, history=history, context=context)
-        content = response["message"]["content"]
-    content, thinking = handle_reasoning(content)
-
-    history.append({"role": "assistant", "content": ""})
-
-
-    streamed_response = ""
-    for character in content:
-        streamed_response += character
-        history[-1]["content"] += character
-        yield history
-
-    save_chat_history(history + [{"role": "assistant", "content": content}])
-
-def save_chat_history(history):
-    with app.app_context():
-        chat = ChatHistory(session_id=generate_session_id())
-        db.session.add(chat)
-        db.session.flush()
-        for message in history:
-            msg = ChatMessage(
-                chat_id = chat.id,
-                role = message["role"],
-                content = message["content"]
-            )
-            db.session.add(msg)
-        db.session.commit()
-    return gr.update(choices=get_chat_histories())
-
-def get_chat_histories():
-    with app.app_context():
-        histories = ChatHistory.query.order_by(ChatHistory.timestamp.desc()).all()
-        return [{
-            'label': f"Chat [{history.session_id}]",
-            'value': history.session_id
-        } for history in histories]
-
-def load_chat_history(session_data):
-    if not session_data:
-        return []
-
-    session_id = session_data.get('value') if isinstance(session_data, dict) else session_data
-    with app.app_context():
-        chat = ChatHistory.query.filter_by(session_id=session_id).first()
-        if not chat:
-            return []
-        messages = chat.messages
-        temp = [{"role": message.role, "content": message.content} for message in messages]
-        print(temp)
-        return [{"role": message.role, "content": message.content} for message in messages]
-
-def refresh_histories():
-    return gr.update(choices=get_chat_histories())
-
-def pdf_viewer(history):
-    if history[-1]["role"] == "assistant":
-        return True
-    return False
+from gradio_funcs import save_files, update_files, process_files, get_chat_histories, load_chat_history, \
+    delete_chat, list_files, user, get_context, assistant, refresh_histories
 
 
 # Gradio App
 with gr.Blocks(fill_height=True) as chat_app:
-    with gr.Row(scale=1):
+    with gr.Row(equal_height=True):
         rag_type = gr.Radio(
             choices=["NaiveRAG", "LightRAG"],
             label="Select RAG Type",
             value="NaiveRAG",
         )
-        chat_history_dropdown = gr.Dropdown(
-            choices=get_chat_histories(),
-            label="Chat History",
-            interactive=True,
-            allow_custom_value=False
-        )
+        initial_choice, initial_value = get_chat_histories()
+        print(initial_value)
+        with gr.Column(scale=15):
+            chat_history_dropdown = gr.Dropdown(
+                choices=initial_choice,
+                value=initial_value,
+                label="Chat History",
+                interactive=True,
+                allow_custom_value=False
+            )
+        with gr.Column(scale=1):
+            delete_btn = gr.Button("🗑Delete Chat", variant="stop")
+
     with gr.Row(scale=50):
         with gr.Column():
             file_input = gr.Files(label="Documents")
@@ -199,6 +56,19 @@ with gr.Blocks(fill_height=True) as chat_app:
         inputs=[chat_history_dropdown],
         outputs=[chat_log]
     )
+    refresh.click(
+        fn=refresh_histories,
+        outputs=[chat_history_dropdown]
+    ).then(
+        fn=load_chat_history,
+        inputs=[chat_history_dropdown],
+        outputs=[chat_log]
+    )
+    delete_btn.click(
+        fn=delete_chat,
+        inputs=[chat_history_dropdown],
+        outputs=[chat_log, chat_history_dropdown]
+    )
     msg.submit(
         fn=user,
         inputs=[msg, chat_log, rag_type],
@@ -215,10 +85,7 @@ with gr.Blocks(fill_height=True) as chat_app:
         outputs=[chat_log],
         queue=True
     )
-    refresh.click(
-        fn=refresh_histories,
-        outputs=[chat_history_dropdown]
-    )
+
     clear.click(lambda: None, None, chat_log, queue=False)
 
 # chat_app.launch(server_name="0.0.0.0", server_port=5000, root_path="http://rag.felicks.duckdns.org")

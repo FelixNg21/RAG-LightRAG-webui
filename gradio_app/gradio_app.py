@@ -1,6 +1,5 @@
 import gradio as gr
 from gradio_pdf import PDF
-import os
 
 from gradio_funcs import save_files, update_files, process_files, get_chat_histories, load_chat_history, \
     delete_chat, list_files, user, get_context, assistant, refresh_histories

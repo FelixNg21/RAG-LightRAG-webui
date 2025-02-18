@@ -1,7 +1,6 @@
 import shutil
 import re
 import gradio as gr
-from markdown_it.cli.parse import interactive
 
 from services.chatlog import ChatHistory, ChatMessage, db
 from services.utils import generate_session_id

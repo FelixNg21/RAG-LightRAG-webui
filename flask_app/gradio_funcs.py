@@ -161,7 +161,7 @@ def delete_chat(session_data):
             db.session.delete(chat)
             db.session.commit()
     choices, value = get_chat_histories()
-    return [], gr.update(choices=choices, value=value, interactive=True)
+    return [], gr.update(choices=choices, value=value)
 
 def pdf_viewer(history):
     if history[-1]["role"] == "assistant":

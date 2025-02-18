@@ -15,7 +15,6 @@ with gr.Blocks(fill_height=True) as chat_app:
             value="NaiveRAG",
         )
         initial_choice, initial_value = get_chat_histories()
-        print(initial_value)
         with gr.Column(scale=15):
             chat_history_dropdown = gr.Dropdown(
                 choices=initial_choice,
@@ -88,5 +87,5 @@ with gr.Blocks(fill_height=True) as chat_app:
 
     clear.click(lambda: None, None, chat_log, queue=False)
 
-# chat_app.launch(server_name="0.0.0.0", server_port=5000, root_path="http://rag.felicks.duckdns.org")
+# chat_app.launch(server_name="0.0.0.0", server_port=5000, root_path="https://rag.felicks.duckdns.org", ssl_verify=False)
 chat_app.launch(debug=True)

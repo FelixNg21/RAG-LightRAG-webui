@@ -3,11 +3,10 @@ from .document_loader import DocumentLoader
 from .ollama_interface import OllamaInterface
 from .lightrag_wrapper import LightRagWrapper
 import os
-from .chatlog import db, ChatLog
-import uuid
+from .chatlog import db, ChatLog, ChatHistory, ChatMessage
 from .chroma_db import Database
 import nest_asyncio
-
+from .utils import generate_session_id
 nest_asyncio.apply()
 
 lightrag = LightRagWrapper(working_dir="lightrag_docs", llm_model_name="deepseek-r1:8b",
@@ -101,6 +100,48 @@ def chat_lightrag(query_text):
     result = lightrag.query(query_text)
     return result
 
+@route_api.route('/chat-history', methods=["GET"])
+def get_chat_histories():
+    histories = ChatHistory.query.order_by(ChatHistory.timestamp.desc()).all()
+    return jsonify([{
+        'session_id': history.session_id,
+        'timestamp': history.timestamp,
+        'messages': [{
+            'role': message.role,
+            'content': message.content,
+            'timestamp': message.timestamp
+        } for message in history.messages]
+    } for history in histories])
+
+
+@route_api.route('/chat-history/<session_id>', methods=['GET'])
+def get_chat_history(session_id):
+    history = ChatHistory.query.filter_by(session_id=session_id).first_or_404()
+    return jsonify({
+        'session_id': history.session_id,
+        'messages': [{
+            'role': m.role,
+            'content': m.content
+        } for m in history.messages]
+    })
+
+
+@route_api.route('/save-chat', methods=['POST'])
+def save_chat():
+    data = request.json
+    history = ChatHistory(session_id=generate_session_id())
+    db.session.add(history)
+
+    for message in data['messages']:
+        chat_message = ChatMessage(
+            chat_id=history.id,
+            role=message['role'],
+            content=message['content']
+        )
+        db.session.add(chat_message)
+
+    db.session.commit()
+    return jsonify({'session_id': history.session_id}), 201
 
 @route_api.route('/load-chat', methods=["GET"])
 def load_chat():
@@ -132,9 +173,6 @@ def new_session():
 
     # return jsonify({"message": "New session created", "session_id": new_session_id}), 200
 
-
-def generate_session_id():
-    return str(uuid.uuid4())
 
 
 """

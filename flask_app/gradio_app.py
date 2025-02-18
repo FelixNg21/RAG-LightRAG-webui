@@ -1,13 +1,22 @@
 import gradio as gr
+from flask import Flask
 from services.lightrag_wrapper import LightRagWrapper
 from services.ollama_interface import OllamaInterface
 from services.chroma_db import Database
 from services.document_loader import DocumentLoader
 from gradio_pdf import PDF
-import time
 import os
 import shutil
 import re
+from services.chatlog import ChatHistory, ChatMessage, db
+from services.utils import generate_session_id
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chat_log.db'
+db.init_app(app)
+
+with app.app_context():
+    db.create_all()
 
 lightrag = LightRagWrapper(working_dir="lightrag_docs", llm_model_name="deepseek-r1:8b",
                            doc_dir="./data/pdfs")
@@ -83,10 +92,8 @@ def handle_reasoning(model_response):
 
 
 def assistant(history: list, user_message, rag_type, context):
-    print(history)
     if rag_type == "LightRAG":
         content = lightrag.query(user_message, history=history)
-
     else:
         response = ollama.query(user_message, use_context=True, history=history, context=context)
         content = response["message"]["content"]
@@ -94,10 +101,54 @@ def assistant(history: list, user_message, rag_type, context):
 
     history.append({"role": "assistant", "content": ""})
 
+
+    streamed_response = ""
     for character in content:
+        streamed_response += character
         history[-1]["content"] += character
         yield history
 
+    save_chat_history(history + [{"role": "assistant", "content": content}])
+
+def save_chat_history(history):
+    with app.app_context():
+        chat = ChatHistory(session_id=generate_session_id())
+        db.session.add(chat)
+        db.session.flush()
+        for message in history:
+            msg = ChatMessage(
+                chat_id = chat.id,
+                role = message["role"],
+                content = message["content"]
+            )
+            db.session.add(msg)
+        db.session.commit()
+    return gr.update(choices=get_chat_histories())
+
+def get_chat_histories():
+    with app.app_context():
+        histories = ChatHistory.query.order_by(ChatHistory.timestamp.desc()).all()
+        return [{
+            'label': f"Chat [{history.session_id}]",
+            'value': history.session_id
+        } for history in histories]
+
+def load_chat_history(session_data):
+    if not session_data:
+        return []
+
+    session_id = session_data.get('value') if isinstance(session_data, dict) else session_data
+    with app.app_context():
+        chat = ChatHistory.query.filter_by(session_id=session_id).first()
+        if not chat:
+            return []
+        messages = chat.messages
+        temp = [{"role": message.role, "content": message.content} for message in messages]
+        print(temp)
+        return [{"role": message.role, "content": message.content} for message in messages]
+
+def refresh_histories():
+    return gr.update(choices=get_chat_histories())
 
 def pdf_viewer(history):
     if history[-1]["role"] == "assistant":
@@ -112,6 +163,12 @@ with gr.Blocks(fill_height=True) as chat_app:
             choices=["NaiveRAG", "LightRAG"],
             label="Select RAG Type",
             value="NaiveRAG",
+        )
+        chat_history_dropdown = gr.Dropdown(
+            choices=get_chat_histories(),
+            label="Chat History",
+            interactive=True,
+            allow_custom_value=False
         )
     with gr.Row(scale=50):
         with gr.Column():
@@ -128,13 +185,20 @@ with gr.Blocks(fill_height=True) as chat_app:
         with gr.Column():
             chat_log = gr.Chatbot(type="messages", scale=0)
             msg = gr.Textbox(label="Message")
-            clear = gr.Button("Clear")
+            with gr.Row():
+                refresh = gr.Button("Refresh")
+                clear = gr.Button("Clear")
             user_message_state = gr.State("")
 
         with gr.Column():
             context = gr.State()
             pdf_component = PDF(visible=False)
 
+    chat_history_dropdown.change(
+        fn=load_chat_history,
+        inputs=[chat_history_dropdown],
+        outputs=[chat_log]
+    )
     msg.submit(
         fn=user,
         inputs=[msg, chat_log, rag_type],
@@ -148,9 +212,14 @@ with gr.Blocks(fill_height=True) as chat_app:
     ).then(
         fn=assistant,
         inputs=[chat_log, user_message_state, rag_type, context],
-        outputs=chat_log,
+        outputs=[chat_log],
         queue=True
+    )
+    refresh.click(
+        fn=refresh_histories,
+        outputs=[chat_history_dropdown]
     )
     clear.click(lambda: None, None, chat_log, queue=False)
 
-chat_app.launch(server_name="0.0.0.0", server_port=5000, root_path="http://rag.felicks.duckdns.org")
+# chat_app.launch(server_name="0.0.0.0", server_port=5000, root_path="http://rag.felicks.duckdns.org")
+chat_app.launch(debug=True)

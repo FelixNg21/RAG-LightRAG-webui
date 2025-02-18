@@ -1,6 +1,6 @@
 # migrate functions from notebook to script
 
-from langchain_community.document_loaders import PyPDFDirectoryLoader
+from langchain_community.document_loaders import PyPDFDirectoryLoader, PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.schema.document import Document
 from langchain_chroma import Chroma
@@ -17,8 +17,17 @@ class DocumentLoader:
         self.db = db
         self.collection_name = collection_name
 
-    def load_documents(self):
-        return self.loader.load()
+    def load_documents(self, file_paths=None):
+        if file_paths:
+            documents = []
+            for file_path in file_paths:
+                full_path = f"{self.data_path}/{file_path}"
+                print(f"Loading documents from {full_path}")
+                loader = PyPDFLoader(full_path)
+                documents.extend(loader.load())
+            return documents
+        else:
+            return self.loader.load()
 
     def split_documents(self, documents: list[Document]):
         text_splitter = RecursiveCharacterTextSplitter(
@@ -66,4 +75,3 @@ class DocumentLoader:
 
             chunk.metadata["id"] = chunk_id
         return chunks
-

@@ -1,20 +1,22 @@
 import gradio as gr
 from gradio_pdf import PDF
-
 from gradio_funcs import save_files, update_files, process_files, get_chat_histories, load_chat_history, \
     delete_chat, list_files, user, get_context, assistant, refresh_histories
 
 
 # Gradio App
-with gr.Blocks(fill_height=True) as chat_app:
-    with gr.Row(equal_height=True):
+with (gr.Blocks(fill_height=True) as chat_app):
+    with gr.Row(equal_height=True, scale=1):
+        # Select RAG Type
         rag_type = gr.Radio(
             choices=["NaiveRAG", "LightRAG"],
             label="Select RAG Type",
             value="NaiveRAG",
         )
+
         initial_choice, initial_value = get_chat_histories()
-        with gr.Column(scale=15):
+        # Select Chat History
+        with gr.Column(scale=10):
             chat_history_dropdown = gr.Dropdown(
                 choices=initial_choice,
                 value=initial_value,
@@ -22,11 +24,12 @@ with gr.Blocks(fill_height=True) as chat_app:
                 interactive=True,
                 allow_custom_value=False
             )
+        # Delete Chat
         with gr.Column(scale=1):
             delete_btn = gr.Button("🗑Delete Chat", variant="stop")
 
-    with gr.Row(scale=50):
-        with gr.Column():
+    with gr.Row(scale=50, equal_height=True):
+        with gr.Column(scale=1):
             file_input = gr.Files(label="Documents")
             file_checkboxes = gr.CheckboxGroup(label="Uploaded Files", choices=list_files())
             process_files_button = gr.Button("Process Files")
@@ -37,8 +40,8 @@ with gr.Blocks(fill_height=True) as chat_app:
             )
             process_files_button.click(process_files, inputs=[file_checkboxes], outputs=process_files_output)
 
-        with gr.Column():
-            chat_log = gr.Chatbot(type="messages", scale=0)
+        with gr.Column(scale=5):
+            chat_log = gr.Chatbot(type="messages")
             msg = gr.Textbox(label="Message")
             with gr.Row():
                 refresh = gr.Button("Refresh")
@@ -49,24 +52,33 @@ with gr.Blocks(fill_height=True) as chat_app:
             context = gr.State()
             pdf_component = PDF(visible=False)
 
+    chat_app.load(
+        fn=load_chat_history,
+        inputs=[chat_history_dropdown],
+        outputs=[chat_log]
+    )
+
     chat_history_dropdown.change(
         fn=load_chat_history,
         inputs=[chat_history_dropdown],
         outputs=[chat_log]
     )
+
     refresh.click(
         fn=refresh_histories,
         outputs=[chat_history_dropdown]
-    ).then(
-        fn=load_chat_history,
+    ).success(
+        fn=lambda x: load_chat_history(x),
         inputs=[chat_history_dropdown],
         outputs=[chat_log]
     )
+
     delete_btn.click(
         fn=delete_chat,
         inputs=[chat_history_dropdown],
         outputs=[chat_log, chat_history_dropdown]
     )
+
     msg.submit(
         fn=user,
         inputs=[msg, chat_log, rag_type],

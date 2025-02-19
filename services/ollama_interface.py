@@ -57,11 +57,6 @@ class OllamaInterface:
     def get_context(self, prompt: str):
         return self.db.similarity_search_with_score(prompt)
 
-    def get_db(self):
-        return self.db
-
-    def get_collection_name(self):
-        return self.collection_name
 
     def get_details(self):
         details = self.ollama.list()

@@ -1,13 +1,11 @@
+import os
 import shutil
 import re
 import gradio as gr
-
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, scoped_session
 from services.chatlog import ChatHistory, ChatMessage, db
 from services.utils import generate_session_id
-from flask import Flask
-import os
-
-
 from services.lightrag_wrapper import LightRagWrapper
 from services.ollama_interface import OllamaInterface
 from services.chroma_db import Database
@@ -19,18 +17,23 @@ chroma_db = Database(chroma_path="chroma", collection_name="documents")
 ollama = OllamaInterface("deepseek-r1:8b", chroma_db.db)
 document_loader = DocumentLoader(chroma_db.db, collection_name="documents", data_path="data/pdfs")
 
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chat_log.db'
-db.init_app(app)
 
-with app.app_context():
-    db.create_all()
+engine = create_engine('sqlite:///chat_log.db')
+db.Model.metadata.create_all(engine)
+SessionFactory=sessionmaker(bind=engine)
+Session=scoped_session(SessionFactory)
 
-SAVE_DIR = "data/pdfs"
+
+SAVE_DIR = "./data/pdfs"
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 # File Management
 def save_files(files):
+    """
+    Save files to the data directory
+    :param files: List of files
+    :return: Message with the files uploaded
+    """
     if not files:
         return "No files uploaded"
     saved_files = []
@@ -42,16 +45,29 @@ def save_files(files):
 
 
 def update_files():
+    """
+    Update the list of files in the directory
+    :return: CheckboxGroup with the updated files
+    """
     updated_files = list_files()
     return gr.CheckboxGroup(label="Uploaded Files", choices=updated_files)
 
 
 def list_files():
+    """
+    List the files in the data directory
+    :return: List of files or message if no files
+    """
     files = os.listdir(SAVE_DIR)
     return files if files else "No files uploaded"
 
 
 def process_files(selected_files):
+    """
+    Process the selected files for both NaiveRAG and LightRAG
+    :param selected_files: List of selected files
+    :return: Message with the files processed
+    """
     if not selected_files:
         return "No files selected"
     try:
@@ -73,17 +89,35 @@ def process_files(selected_files):
 
 # Chat functions
 def user(user_message, history: list, rag_type):
+    """
+    Handle user message
+    :param user_message: User message
+    :param history: Chat history
+    :param rag_type: RAG type
+    :return: String for textbox, Updated history, user message, RAG type
+    """
     history = history or []
     history = history + [{"role": "user", "content": user_message}]
     return "", history, user_message, rag_type
 
 
 def get_context(history, user_message, rag_type):
+    """
+    Get context based on the user message
+    :param history: Chat history
+    :param user_message: User message
+    :param rag_type: RAG type
+    """
     context = ollama.get_context(user_message)
     return context, history, user_message, rag_type
 
 
 def handle_reasoning(model_response):
+    """
+    Handle reasoning in the model response
+    :param model_response: Model response
+    :return: Model response, Thinking
+    """
     if "<think>" in model_response:
         thinking = re.findall(r"<think>.*?</think>", model_response, flags=re.DOTALL)
         model_response = re.sub(r"<think>.*?</think>", "", model_response, flags=re.DOTALL)
@@ -92,6 +126,13 @@ def handle_reasoning(model_response):
 
 
 def assistant(history: list, user_message, rag_type, context):
+    """
+    Handle assistant response
+    :param history: Chat history
+    :param user_message: User message
+    :param rag_type: RAG type
+    :param context: Context from vector search
+    """
     if rag_type == "LightRAG":
         content = lightrag.query(user_message, history=history)
     else:
@@ -101,64 +142,95 @@ def assistant(history: list, user_message, rag_type, context):
 
     history.append({"role": "assistant", "content": ""})
 
-
-    streamed_response = ""
     for character in content:
-        streamed_response += character
         history[-1]["content"] += character
         yield history
 
-    save_chat_history(history + [{"role": "assistant", "content": content}])
+    save_chat_history(history)
 
+
+# Chat History Management
 def save_chat_history(history):
-    with app.app_context():
+    """
+    Save chat history to the database
+    :param history: Chat history
+    """
+    session = Session()
+    try:
         chat = ChatHistory(session_id=generate_session_id())
-        db.session.add(chat)
-        db.session.flush()
+        session.add(chat)
+        session.flush()
         for message in history:
+            print("Message", message)
             msg = ChatMessage(
                 chat_id = chat.id,
                 role = message["role"],
                 content = message["content"]
             )
-            db.session.add(msg)
-        db.session.commit()
+            session.add(msg)
+        session.commit()
+    finally:
+        Session.remove()
     return gr.update(choices=get_chat_histories())
 
 def get_chat_histories():
-    with app.app_context():
-        histories = ChatHistory.query.order_by(ChatHistory.timestamp.desc()).all()
-        choices = [{
-            'value': history.session_id
-        } for history in histories]
+    """
+    Get chat histories from the database
+    :return: Choices for dropdown, Initial value for dropdown
+    """
+    session = Session()
+    try:
+        histories = session.query(ChatHistory).order_by(ChatHistory.timestamp.desc()).all()
+        choices = [history.session_id for history in histories]
         initial_value = choices[0] if choices else None
-        return choices, initial_value
+
+    finally:
+        Session.remove()
+    return choices, initial_value
 
 def load_chat_history(session_data):
+    """
+    Load chat history from the database
+    :param session_data: Session data
+    :return: Chat history
+    """
+    session = Session()
     if not session_data:
         return []
 
     session_id = session_data.get('value') if isinstance(session_data, dict) else session_data
-    with app.app_context():
-        chat = ChatHistory.query.filter_by(session_id=session_id).first()
+    try:
+        chat = session.query(ChatHistory).filter_by(session_id=session_id).first()
         if not chat:
             return []
         messages = chat.messages
         return [{"role": message.role, "content": message.content} for message in messages]
+    finally:
+        Session.remove()
 
 def refresh_histories():
+    """
+    Refresh chat histories
+    :return: Updated choices and value
+    """
     choices, value = get_chat_histories()
-    return gr.update(choices=choices, value=value, interactive=True)
+    return gr.update(choices=choices, value=value)
 
 def delete_chat(session_data):
+    """
+    Delete chat history from the database
+    """
+    session = Session()
     if not session_data:
         return gr.update(), gr.update()
     session_id = session_data.get('value') if isinstance(session_data, dict) else session_data
-    with app.app_context():
-        chat = ChatHistory.query.filter_by(session_id=session_id).first()
+    try:
+        chat = session.query(ChatHistory).filter_by(session_id=session_id).first()
         if chat:
-            db.session.delete(chat)
-            db.session.commit()
+            session.delete(chat)
+            session.commit()
+    finally:
+        Session.remove()
     choices, value = get_chat_histories()
     return [], gr.update(choices=choices, value=value)
 

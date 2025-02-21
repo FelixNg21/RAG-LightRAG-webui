@@ -3,9 +3,8 @@ from gradio_pdf import PDF
 from gradio_funcs import save_files, update_files, process_files, get_chat_histories, load_chat_history, \
     delete_chat, list_files, user, get_context, assistant, refresh_histories
 
-
 # Gradio App
-with (gr.Blocks(fill_height=True) as chat_app):
+with gr.Blocks(fill_height=True) as chat_app:
     with gr.Row(equal_height=True, scale=1):
         # Select RAG Type
         rag_type = gr.Radio(
@@ -81,8 +80,8 @@ with (gr.Blocks(fill_height=True) as chat_app):
 
     msg.submit(
         fn=user,
-        inputs=[msg, chat_log, rag_type],
-        outputs=[msg, chat_log, user_message_state, rag_type],
+        inputs=[msg, chat_log],
+        outputs=[msg, chat_log, user_message_state],
         queue=True
     ).then(
         fn=get_context,
@@ -98,5 +97,6 @@ with (gr.Blocks(fill_height=True) as chat_app):
 
     clear.click(lambda: None, None, chat_log, queue=False)
 
-# chat_app.launch(server_name="0.0.0.0", server_port=5000, root_path="https://rag.felicks.duckdns.org", ssl_verify=False)
-chat_app.launch(debug=True)
+if __name__ == "__main__":
+    # chat_app.launch(server_name="0.0.0.0", server_port=5000, root_path="https://rag.felicks.duckdns.org", ssl_verify=False)
+    chat_app.launch(debug=True)

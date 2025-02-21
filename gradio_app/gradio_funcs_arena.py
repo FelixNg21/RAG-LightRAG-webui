@@ -12,7 +12,7 @@ import re
 import gradio as gr
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
-from services.chatlog import ChatHistory, ChatMessage, db
+from services.chatlog_arena import ChatHistory, ChatMessage, db
 from services.utils import generate_session_id
 from services.lightrag_wrapper import LightRagWrapper
 from services.ollama_interface import OllamaInterface
@@ -26,8 +26,8 @@ ollama = OllamaInterface("deepseek-r1:8b", chroma_db.db)
 document_loader = DocumentLoader(chroma_db.db, collection_name="documents", data_path="data/pdfs")
 
 
-engine = create_engine('sqlite:///chat_log.db')
-if not os.path.exists('chat_log.db'):
+engine = create_engine('sqlite:///chat_log_arena.db')
+if not os.path.exists('chat_log_arena.db'):
     db.Model.metadata.create_all(engine)
 SessionFactory=sessionmaker(bind=engine)
 Session=scoped_session(SessionFactory)
@@ -161,16 +161,17 @@ def save_chat_history(history, rag_type):
     """
     Save chat history to the database
     :param history: Chat history
+    :param rag_type: RAG type
     """
     session = Session()
     try:
-        chat = ChatHistory(session_id=generate_session_id(), rag_type=rag_type)
+        chat = ChatHistory(session_id=generate_session_id())
         session.add(chat)
         session.flush()
         for message in history:
-            print("Message", message)
             msg = ChatMessage(
                 chat_id = chat.id,
+                rag_type = rag_type,
                 role = message["role"],
                 content = message["content"]
             )
@@ -188,7 +189,7 @@ def get_chat_histories():
     session = Session()
     try:
         histories = session.query(ChatHistory).order_by(ChatHistory.timestamp.desc()).all()
-        choices = [f"{history.rag_type} - {history.session_id}" for history in histories]
+        choices = [history.session_id for history in histories]
         initial_value = choices[0] if choices else None
 
     finally:
@@ -206,21 +207,14 @@ def load_chat_history(session_data):
         return [], []
 
     session_id = session_data.get('value') if isinstance(session_data, dict) else session_data
-    rag_type, session_id = session_id.split(" - ")
     try:
-        chats = session.query(ChatHistory).filter_by(session_id=session_id).all()
-        naive_chat, lightrag_chat = [], []
-        # if not chat:
-        #     return []
-        # messages = chat.messages
-        # return [{"role": message.role, "content": message.content} for message in messages]
-        for chat in chats:
-            print(chat)
-            messages = [{"role": message.role, "content": message.content} for message in chat.messages]
-            if chat.rag_type == "NaiveRAG":
-                naive_chat = messages
-            else:
-                lightrag_chat = messages
+        chat = session.query(ChatHistory).filter_by(session_id=session_id).first()
+        if not chat:
+            return [], []
+        naive_chat = [{"role": message.role, "content": message.content} for message in chat.naive_messages]
+        lightrag_chat = [{"role": message.role, "content": message.content} for message in chat.light_messages]
+
+
         return naive_chat, lightrag_chat
     finally:
         Session.remove()
@@ -249,7 +243,7 @@ def delete_chat(session_data):
     finally:
         Session.remove()
     choices, value = get_chat_histories()
-    return [], gr.update(choices=choices, value=value)
+    return [], [], gr.update(choices=choices, value=value)
 
 def pdf_viewer(history):
     if history[-1]["role"] == "assistant":

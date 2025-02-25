@@ -1,11 +1,12 @@
 import sys
 import os
-# Get the directory containing the current script
+# # Get the directory containing the current script
 current_dir = os.path.dirname(os.path.abspath(__file__))
-# Get the parent directory
-parent_dir = os.path.dirname(current_dir)
-# Add the parent directory to sys.path
-sys.path.append(parent_dir)
+print(current_dir)
+# # Get the parent directory
+# parent_dir = os.path.dirname(current_dir)
+# # Add the parent directory to sys.path
+# sys.path.append(parent_dir)
 
 import shutil
 import re
@@ -19,8 +20,8 @@ from services.ollama_interface import OllamaInterface
 from services.chroma_db import Database
 from services.document_loader import DocumentLoader
 
-lightrag = LightRagWrapper(working_dir="./gradio_app/lightrag_docs", llm_model_name="deepseek-r1:8b",
-                           doc_dir="./gradio_app/data/pdfs")
+lightrag = LightRagWrapper(working_dir="./lightrag_docs", llm_model_name="deepseek-r1:8b",
+                           doc_dir="/data/pdfs")
 chroma_db = Database(chroma_path="chroma", collection_name="documents")
 ollama = OllamaInterface("deepseek-r1:8b", chroma_db.db)
 document_loader = DocumentLoader(chroma_db.db, collection_name="documents", data_path="data/pdfs")
@@ -33,7 +34,7 @@ SessionFactory=sessionmaker(bind=engine)
 Session=scoped_session(SessionFactory)
 
 
-SAVE_DIR = "./gradio_app/data/pdfs"
+SAVE_DIR = "./data/pdfs"
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 # File Management
@@ -97,7 +98,7 @@ def process_files(selected_files):
 
 
 # Chat functions
-def user(user_message, history: list):
+def user(user_message, history: list, session_id=None):
     """
     Handle user message
     :param user_message: User message
@@ -105,8 +106,10 @@ def user(user_message, history: list):
     :return: String for textbox, Updated history, user message, RAG type
     """
     history = history or []
+    if not history and session_id is None:
+        session_id = generate_session_id()
     history = history + [{"role": "user", "content": user_message}]
-    return "", history, user_message
+    return "", history, user_message, session_id
 
 
 def get_context(history, user_message):
@@ -132,7 +135,7 @@ def handle_reasoning(model_response):
     return model_response, None
 
 
-def assistant(history: list, user_message, rag_type, context):
+def assistant(history: list, user_message, rag_type, context, session_id=None):
     """
     Handle assistant response
     :param history: Chat history
@@ -153,21 +156,33 @@ def assistant(history: list, user_message, rag_type, context):
         history[-1]["content"] += character
         yield history
 
-    save_chat_history(history, rag_type)
+    save_chat_history(history, rag_type, session_id)
+    return history, session_id
 
 
 # Chat History Management
-def save_chat_history(history, rag_type):
+def save_chat_history(history, rag_type, session_id=None):
     """
     Save chat history to the database
     :param history: Chat history
     :param rag_type: RAG type
     """
     session = Session()
+
     try:
-        chat = ChatHistory(session_id=generate_session_id())
-        session.add(chat)
-        session.flush()
+        if session_id is None:
+            session_id = generate_session_id()
+        chat = session.query(ChatHistory).filter_by(session_id=session_id).first()
+
+        if not chat:
+            chat = ChatHistory(session_id=session_id)
+            session.add(chat)
+            session.flush()
+
+        session.query(ChatMessage).filter_by(
+            chat_id=chat.id,
+            rag_type=rag_type
+        ).delete()
         for message in history:
             msg = ChatMessage(
                 chat_id = chat.id,
@@ -208,11 +223,12 @@ def load_chat_history(session_data):
 
     session_id = session_data.get('value') if isinstance(session_data, dict) else session_data
     try:
-        chat = session.query(ChatHistory).filter_by(session_id=session_id).first()
-        if not chat:
+        chats = session.query(ChatHistory).filter_by(session_id=session_id).all()
+        if not chats:
             return [], []
-        naive_chat = [{"role": message.role, "content": message.content} for message in chat.naive_messages]
-        lightrag_chat = [{"role": message.role, "content": message.content} for message in chat.light_messages]
+        print("Chat", chats)
+        naive_chat = [{"role": message.role, "content": message.content} for chat in chats for message in chat.naive_messages]
+        lightrag_chat = [{"role": message.role, "content": message.content} for chat in chats for message in chat.light_messages]
 
 
         return naive_chat, lightrag_chat

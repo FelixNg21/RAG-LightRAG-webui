@@ -1,11 +1,14 @@
 import gradio as gr
 from gradio_pdf import PDF
+
+# from gradio_app.gradio_app import session_id
 from gradio_funcs_arena import save_files, update_files, process_files, get_chat_histories, load_chat_history, \
     delete_chat, list_files, user, get_context, assistant, refresh_histories
 
 
 # Gradio App
 with gr.Blocks(fill_height=True) as chat_app:
+    session_id = gr.State(None)
     with gr.Row(equal_height=True, scale=1):
         # # Select RAG Type
         # rag_type = gr.Radio(
@@ -84,11 +87,11 @@ with gr.Blocks(fill_height=True) as chat_app:
         inputs=[chat_history_dropdown],
         outputs=[chat_log_naive, chat_log_light, chat_history_dropdown]
     )
-    #
+
     msg.submit(
         fn=user,
-        inputs=[msg, chat_log_naive],
-        outputs=[msg, chat_log_naive, user_message_state],
+        inputs=[msg, chat_log_naive, session_id],
+        outputs=[msg, chat_log_naive, user_message_state, session_id],
         queue=True
     ).then(
         fn=get_context,
@@ -97,14 +100,14 @@ with gr.Blocks(fill_height=True) as chat_app:
         queue=True
     ).then(
         fn=assistant,
-        inputs=[chat_log_naive, user_message_state, gr.State("NaiveRAG"), context],
+        inputs=[chat_log_naive, user_message_state, gr.State("NaiveRAG"), context, session_id],
         outputs=[chat_log_naive],
         queue=True
     )
     msg.submit(
         fn=user,
-        inputs=[msg, chat_log_light],
-        outputs=[msg, chat_log_light, user_message_state],
+        inputs=[msg, chat_log_light, session_id],
+        outputs=[msg, chat_log_light, user_message_state, session_id],
         queue=True
     ).then(
         fn=get_context,
@@ -113,14 +116,14 @@ with gr.Blocks(fill_height=True) as chat_app:
         queue=True
     ).then(
         fn=assistant,
-        inputs=[chat_log_light, user_message_state, gr.State("LightRAG"), context],
+        inputs=[chat_log_light, user_message_state, gr.State("LightRAG"), context, session_id],
         outputs=[chat_log_light],
         queue=True
     )
-    #
+
     clear.click(lambda: (None, None), None, [chat_log_naive, chat_log_light], queue=False)
 
 if __name__ == "__main__":
-    chat_app.launch()
-# chat_app.launch(server_name="0.0.0.0", server_port=5000, root_path="https://rag.felicks.duckdns.org", ssl_verify=False)
-# chat_app.launch(debug=True)
+    # chat_app.launch()
+    # chat_app.launch(server_name="0.0.0.0", server_port=5000, root_path="https://rag.felicks.duckdns.org", ssl_verify=False)
+    chat_app.launch(debug=True)

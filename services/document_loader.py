@@ -4,6 +4,7 @@ from langchain_community.document_loaders import PyPDFDirectoryLoader, PyPDFLoad
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.schema.document import Document
 from langchain_chroma import Chroma
+from services.chroma_db import Database
 
 
 class DocumentLoader:
@@ -11,7 +12,7 @@ class DocumentLoader:
     DocumentLoader class to load and split documents for use in RAG application
     """
 
-    def __init__(self, db: Chroma, collection_name="documents", data_path="data/pdfs", ):
+    def __init__(self, db: Database, collection_name="documents", data_path="data/pdfs", ):
         self.data_path = data_path
         self.loader = PyPDFDirectoryLoader(self.data_path)
         self.db = db
@@ -22,7 +23,6 @@ class DocumentLoader:
             documents = []
             for file_path in file_paths:
                 full_path = f"{self.data_path}/{file_path}"
-                print(f"Loading documents from {full_path}")
                 loader = PyPDFLoader(full_path)
                 documents.extend(loader.load())
             return documents
@@ -41,7 +41,7 @@ class DocumentLoader:
     def add_to_chroma(self, chunks: list[Document]):
         chunks_with_ids = self.calculate_chunk_ids(chunks)
 
-        existing_items = self.db.get(include=[])
+        existing_items = self.db.get()
         existing_ids = set(existing_items["ids"])
         print(f'Existing items: {len(existing_ids)}')
 
@@ -75,3 +75,18 @@ class DocumentLoader:
 
             chunk.metadata["id"] = chunk_id
         return chunks
+
+    def delete_document(self, list_of_docs):
+        list_of_ids = self.get_documents()["ids"]
+        target_docs = [id for doc in list_of_docs for id in list_of_ids if doc in id]
+        print(target_docs)
+        self.db.delete(target_docs)
+
+    def get_documents(self):
+        collection = self.db.get()
+        return collection
+
+    def ingest(self, file_path):
+        documents = self.load_documents(file_path)
+        chunks = self.split_documents(documents)
+        self.add_to_chroma(chunks)

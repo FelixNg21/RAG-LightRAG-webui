@@ -34,15 +34,16 @@ class LightRagWrapper:
         )
         self.doc_dir = doc_dir
 
-    def ingest(self, path):
-        text_content = textract.process(self.doc_dir+"/"+path)
-        self.rag.insert(text_content.decode("utf-8"))
+    def ingest(self, file_paths):
+        for path in file_paths:
+            text_content = textract.process(self.doc_dir+"/"+path)
+            self.rag.insert(text_content.decode("utf-8"))
 
     def query(self, query_text, history: list = None, mode: Literal["local", "global", "hybrid", "naive","mix"]='hybrid'):
         return self.rag.query(query_text, param=QueryParam(mode=mode, conversation_history=history))
 
-    def delete_by_doc_id(self, doc_id):
-        self.rag.delete_by_doc_id(doc_id)
+    async def delete_by_doc_id(self, doc_id):
+        await self.rag.adelete_by_doc_id(doc_id)
 
     def delete_by_entity_id(self, entity_id):
         self.rag.delete_by_entity(entity_id)

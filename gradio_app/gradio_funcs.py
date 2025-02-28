@@ -1,29 +1,21 @@
-import sys
 import os
-# Get the directory containing the current script
-current_dir = os.path.dirname(os.path.abspath(__file__))
-# Get the parent directory
-parent_dir = os.path.dirname(current_dir)
-# Add the parent directory to sys.path
-sys.path.append(parent_dir)
-
 import shutil
 import re
 import gradio as gr
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
-from services.chatlog import ChatHistory, ChatMessage, db
+from services.chatlog import ChatHistory, ChatMessage, ChatHistoryArena, ChatMessageArena, db
 from services.utils import generate_session_id
 from services.lightrag_wrapper import LightRagWrapper
 from services.ollama_interface import OllamaInterface
 from services.chroma_db import Database
 from services.document_loader import DocumentLoader
 
-lightrag = LightRagWrapper(working_dir="./gradio_app/lightrag_docs", llm_model_name="deepseek-r1:8b",
-                           doc_dir="./gradio_app/data/pdfs")
+lightrag = LightRagWrapper(working_dir="./lightrag_docs", llm_model_name="deepseek-r1:8b",
+                           doc_dir="./data/pdfs")
 chroma_db = Database(chroma_path="chroma", collection_name="documents")
 ollama = OllamaInterface("deepseek-r1:8b", chroma_db.db)
-document_loader = DocumentLoader(chroma_db.db, collection_name="documents", data_path="data/pdfs")
+document_loader = DocumentLoader(chroma_db.db, collection_name="documents", data_path="./data/pdfs")
 
 
 engine = create_engine('sqlite:///chat_log.db')
@@ -33,7 +25,7 @@ SessionFactory=sessionmaker(bind=engine)
 Session=scoped_session(SessionFactory)
 
 
-SAVE_DIR = "./gradio_app/data/pdfs"
+SAVE_DIR = "./data/pdfs"
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 # File Management
@@ -81,14 +73,10 @@ def process_files(selected_files):
         return "No files selected"
     try:
         # Processing for NaiveRAG
-        documents = document_loader.load_documents(selected_files)
-        chunks = document_loader.split_documents(documents)
-        document_loader.add_to_chroma(chunks)
+        document_loader.ingest(selected_files)
 
         # Processing for LightRAG
-        for file in selected_files:
-            print('Ingesting file:', file)
-            lightrag.ingest(file)
+        lightrag.ingest(selected_files)
 
     except Exception as e:
         return "Error processing files: " + str(e)
@@ -97,7 +85,7 @@ def process_files(selected_files):
 
 
 # Chat functions
-def user(user_message, history: list):
+def user(user_message, history: list, session_id=None):
     """
     Handle user message
     :param user_message: User message
@@ -105,8 +93,10 @@ def user(user_message, history: list):
     :return: String for textbox, Updated history, user message, RAG type
     """
     history = history or []
+    if not history and session_id is None:
+        session_id = generate_session_id()
     history = history + [{"role": "user", "content": user_message}]
-    return "", history, user_message
+    return "", history, user_message, session_id
 
 
 def get_context(history, user_message):
@@ -132,7 +122,7 @@ def handle_reasoning(model_response):
     return model_response, None
 
 
-def assistant(history: list, user_message, rag_type, context):
+def assistant(history: list, user_message, rag_type, context, session_id=None, arena_flag=False):
     """
     Handle assistant response
     :param history: Chat history
@@ -153,22 +143,35 @@ def assistant(history: list, user_message, rag_type, context):
         history[-1]["content"] += character
         yield history
 
-    save_chat_history(history, rag_type)
+    if arena_flag:
+        save_chat_history_arena(history, rag_type, session_id)
+    else:
+        save_chat_history(history, rag_type, session_id)
+    return history, session_id
 
 
 # Chat History Management
-def save_chat_history(history, rag_type):
+def save_chat_history(history, rag_type, session_id=None):
     """
     Save chat history to the database
     :param history: Chat history
+    :rag_type: RAG type
+    :session_id: Session ID
     """
     session = Session()
     try:
-        chat = ChatHistory(session_id=generate_session_id(), rag_type=rag_type)
-        session.add(chat)
-        session.flush()
-        for message in history:
-            print("Message", message)
+        if session_id is None:
+            session_id = generate_session_id()
+        chat = session.query(ChatHistory).filter_by(session_id=session_id, rag_type=rag_type).first()
+
+        if not chat:
+            chat = ChatHistory(session_id=session_id, rag_type=rag_type)
+            session.add(chat)
+            session.flush()
+
+        existing_messages = session.query(ChatMessage).filter_by(chat_id=chat.id).count()
+        new_messages = history[existing_messages:]
+        for message in new_messages:
             msg = ChatMessage(
                 chat_id = chat.id,
                 role = message["role"],
@@ -180,6 +183,39 @@ def save_chat_history(history, rag_type):
         Session.remove()
     return gr.update(choices=get_chat_histories())
 
+def save_chat_history_arena(history, rag_type, session_id=None):
+    """
+    Save chat history to the database
+    :param history: Chat history
+    :param rag_type: RAG type
+    :param session_id: Session ID
+    """
+    session = Session()
+    try:
+        if session_id is None:
+            session_id = generate_session_id()
+        chat = session.query(ChatHistoryArena).filter_by(session_id=session_id).first()
+
+        if not chat:
+            chat = ChatHistoryArena(session_id=session_id)
+            session.add(chat)
+            session.flush()
+
+        existing_messages = session.query(ChatMessageArena).filter_by(chat_id=chat.id, rag_type=rag_type).count()
+        new_messages = history[existing_messages:]
+        for message in new_messages:
+            msg = ChatMessageArena(
+                chat_id = chat.id,
+                rag_type = rag_type,
+                role = message["role"],
+                content = message["content"]
+            )
+            session.add(msg)
+        session.commit()
+    finally:
+        Session.remove()
+    return gr.update(choices=get_chat_histories_arena())
+
 def get_chat_histories():
     """
     Get chat histories from the database
@@ -190,10 +226,25 @@ def get_chat_histories():
         histories = session.query(ChatHistory).order_by(ChatHistory.timestamp.desc()).all()
         choices = [f"{history.rag_type} - {history.session_id}" for history in histories]
         initial_value = choices[0] if choices else None
+    finally:
+        Session.remove()
+    return choices, initial_value
+
+def get_chat_histories_arena():
+    """
+    Get chat histories from the database
+    :return: Choices for dropdown, Initial value for dropdown
+    """
+    session = Session()
+    try:
+        histories = session.query(ChatHistoryArena).order_by(ChatHistoryArena.timestamp.desc()).all()
+        choices = [history.session_id for history in histories]
+        initial_value = choices[0] if choices else None
 
     finally:
         Session.remove()
     return choices, initial_value
+
 
 def load_chat_history(session_data):
     """
@@ -203,25 +254,37 @@ def load_chat_history(session_data):
     """
     session = Session()
     if not session_data:
-        return [], []
+        return [], None
 
     session_id = session_data.get('value') if isinstance(session_data, dict) else session_data
     rag_type, session_id = session_id.split(" - ")
     try:
-        chats = session.query(ChatHistory).filter_by(session_id=session_id).all()
-        naive_chat, lightrag_chat = [], []
-        # if not chat:
-        #     return []
-        # messages = chat.messages
-        # return [{"role": message.role, "content": message.content} for message in messages]
-        for chat in chats:
-            print(chat)
-            messages = [{"role": message.role, "content": message.content} for message in chat.messages]
-            if chat.rag_type == "NaiveRAG":
-                naive_chat = messages
-            else:
-                lightrag_chat = messages
-        return naive_chat, lightrag_chat
+        chat = session.query(ChatHistory).filter_by(session_id=session_id).first()
+        messages = chat.messages
+
+        return [{"role": message.role, "content": message.content} for message in messages], session_id
+    finally:
+        Session.remove()
+
+def load_chat_history_arena(session_data):
+    """
+    Load chat history from the database
+    :param session_data: Session data
+    :return: Chat history
+    """
+    session = Session()
+    if not session_data:
+        return [], [], None
+
+    session_id = session_data.get('value') if isinstance(session_data, dict) else session_data
+    try:
+        chats = session.query(ChatHistoryArena).filter_by(session_id=session_id).all()
+        if not chats:
+            return [], [], None
+        naive_chat = [{"role": message.role, "content": message.content} for chat in chats for message in chat.naive_messages]
+        lightrag_chat = [{"role": message.role, "content": message.content} for chat in chats for message in chat.light_messages]
+
+        return naive_chat, lightrag_chat, session_id
     finally:
         Session.remove()
 
@@ -233,23 +296,52 @@ def refresh_histories():
     choices, value = get_chat_histories()
     return gr.update(choices=choices, value=value)
 
-def delete_chat(session_data):
+def refresh_histories_arena():
+    """
+    Refresh chat histories
+    :return: Updated choices and value
+    """
+    choices, value = get_chat_histories_arena()
+    return gr.update(choices=choices, value=value)
+
+def delete_chat(session_data, arena_flag=False):
     """
     Delete chat history from the database
     """
     session = Session()
-    if not session_data:
-        return gr.update(), gr.update()
-    session_id = session_data.get('value') if isinstance(session_data, dict) else session_data
-    try:
-        chat = session.query(ChatHistory).filter_by(session_id=session_id).first()
-        if chat:
-            session.delete(chat)
-            session.commit()
-    finally:
-        Session.remove()
-    choices, value = get_chat_histories()
-    return [], gr.update(choices=choices, value=value)
+    if arena_flag:
+        if not session_data:
+            choices, value = get_chat_histories()
+            return [], [], gr.update(choices=choices, value=value)
+        session_id = session_data.get('value') if isinstance(session_data, dict) else session_data
+        try:
+            chat = session.query(ChatHistoryArena).filter_by(session_id=session_id).first()
+            if chat:
+                session.delete(chat)
+                session.commit()
+        finally:
+            Session.remove()
+        choices, value = get_chat_histories_arena()
+        return [], [], gr.update(choices=choices, value=value)
+    else:
+        if not session_data:
+            choices, value = get_chat_histories()
+            return [], gr.update(choices=choices, value=value)
+        rag_type, session_id = session_data.split(" - ")
+        try:
+            chat = session.query(ChatHistory).filter_by(session_id=session_id).first()
+            if chat:
+                session.delete(chat)
+                session.commit()
+        except:
+            chat = session.query(ChatHistoryArena).filter_by(session_id=session_id).first()
+            if chat:
+                session.delete(chat)
+                session.commit()
+        finally:
+            Session.remove()
+        choices, value = get_chat_histories()
+        return [], gr.update(choices=choices, value=value)
 
 def pdf_viewer(history):
     if history[-1]["role"] == "assistant":

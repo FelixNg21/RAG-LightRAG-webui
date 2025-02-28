@@ -2,14 +2,14 @@ import ollama
 from langchain_chroma import Chroma
 from langchain.prompts import ChatPromptTemplate
 
-CHROMA_PATH = "chroma"
 
 PROMPT_TEMPLATE = """
-Answer the question based only on the following context:
+The following information is your only source of truth, only answer the question with the provided context, if you are unable
+to answer the question with the provided context, please state that you do not know.:
 {context}
 
 ---
-Answer the question based on the above context: {question}
+Answer the question only using the above context, otherwise state that you do not know: {question}
 """
 
 
@@ -18,20 +18,19 @@ def extract_model_names(json):
 
 
 class OllamaInterface:
-    def __init__(self, model: str, db: Chroma, collection_name="documents"):
+    def __init__(self, model: str, db: Chroma):
 
         # self.ollama = ollama.Client("http://ollama:11434")
         self.ollama = ollama
         self.ollama_model_str = model
-        self.chroma_path = CHROMA_PATH
-        self.collection_name = collection_name
         self.db = db
         # load LLM into memory
         self.ollama.generate(model=self.ollama_model_str,
                              keep_alive=-1)
 
-    def query(self, prompt: str, use_context: bool = True, history: list = None, history_limit: int = 5, context: list = None):
-
+    def query(self, prompt: str, use_context: bool = True, history: list = None, history_limit: int = 5, context=None):
+        if context is None:
+            context = []
         try:
             if use_context:
                 context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in context])
@@ -56,7 +55,6 @@ class OllamaInterface:
 
     def get_context(self, prompt: str):
         return self.db.similarity_search_with_score(prompt)
-
 
     def get_details(self):
         details = self.ollama.list()

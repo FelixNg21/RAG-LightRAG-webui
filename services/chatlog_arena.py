@@ -7,7 +7,7 @@ db = SQLAlchemy()
 
 
 class ChatHistory(db.Model):
-    __tablename__ = 'chat_history'
+    __tablename__ = 'chat_history_arena'
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.String(36), nullable=False)
     timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())

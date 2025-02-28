@@ -17,6 +17,13 @@ class LightRagWrapper:
         if llm_model_kwargs is None:
             llm_model_kwargs = llm_model_kwargs
 
+        self.embedding_func = EmbeddingFunc(
+            embedding_dim=embedding_dim,
+            max_token_size=max_token_size,
+            func=lambda texts: ollama_embed(
+                texts, embed_model="nomic-embed-text", host="http://localhost:11434"
+            ),
+        )
         self.rag = LightRAG(
             working_dir=working_dir,
             llm_model_func=ollama_model_complete,
@@ -24,20 +31,16 @@ class LightRagWrapper:
             llm_model_max_async=llm_model_max_async,
             llm_model_max_token_size=llm_model_max_token_size,
             llm_model_kwargs=llm_model_kwargs,
-            embedding_func=EmbeddingFunc(
-                embedding_dim=embedding_dim,
-                max_token_size=max_token_size,
-                func=lambda texts: ollama_embed(
-                    texts, embed_model="nomic-embed-text", host="http://localhost:11434"
-                ),
-            ),
+            embedding_func=self.embedding_func,
         )
         self.doc_dir = doc_dir
 
     def ingest(self, file_paths):
+        self.switch_model("llama3.2:latest")
         for path in file_paths:
             text_content = textract.process(self.doc_dir+"/"+path)
             self.rag.insert(text_content.decode("utf-8"))
+        self.switch_model("deepseek-r1:8b")
 
     def query(self, query_text, history: list = None, mode: Literal["local", "global", "hybrid", "naive","mix"]='hybrid'):
         return self.rag.query(query_text, param=QueryParam(mode=mode, conversation_history=history))
@@ -47,3 +50,14 @@ class LightRagWrapper:
 
     def delete_by_entity_id(self, entity_id):
         self.rag.delete_by_entity(entity_id)
+
+    def switch_model(self, model_name):
+        self.rag = LightRAG(
+            working_dir=self.rag.working_dir,
+            llm_model_func=ollama_model_complete,
+            llm_model_name=model_name,
+            llm_model_max_async=self.rag.llm_model_max_async,
+            llm_model_max_token_size=self.rag.llm_model_max_token_size,
+            llm_model_kwargs=self.rag.llm_model_kwargs,
+            embedding_func=self.embedding_func,
+        )

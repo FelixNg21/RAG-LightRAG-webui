@@ -1,11 +1,10 @@
 # migrate functions from notebook to script
 
-from langchain_community.document_loaders import PyPDFDirectoryLoader
+from langchain_community.document_loaders import PyPDFDirectoryLoader, PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.schema.document import Document
 from langchain_chroma import Chroma
-from chromadb import PersistentClient
-import shutil
+from services.chroma_db import Database
 
 
 class DocumentLoader:
@@ -13,15 +12,22 @@ class DocumentLoader:
     DocumentLoader class to load and split documents for use in RAG application
     """
 
-    def __init__(self, db: Chroma, collection_name="documents"):
-        self.data_path = "data/pdfs"
-        self.chrome_path = "chroma"
+    def __init__(self, db: Database, collection_name="documents", data_path="data/pdfs", ):
+        self.data_path = data_path
         self.loader = PyPDFDirectoryLoader(self.data_path)
         self.db = db
         self.collection_name = collection_name
 
-    def load_documents(self):
-        return self.loader.load()
+    def load_documents(self, file_paths=None):
+        if file_paths:
+            documents = []
+            for file_path in file_paths:
+                full_path = f"{self.data_path}/{file_path}"
+                loader = PyPDFLoader(full_path)
+                documents.extend(loader.load())
+            return documents
+        else:
+            return self.loader.load()
 
     def split_documents(self, documents: list[Document]):
         text_splitter = RecursiveCharacterTextSplitter(
@@ -32,11 +38,10 @@ class DocumentLoader:
         )
         return text_splitter.split_documents(documents)
 
-    def add_to_chroma(self, chunks: list[Document], ollama_interface):
-        self.db = ollama_interface.get_db()
+    def add_to_chroma(self, chunks: list[Document]):
         chunks_with_ids = self.calculate_chunk_ids(chunks)
 
-        existing_items = self.db.get(include=[])
+        existing_items = self.db.get()
         existing_ids = set(existing_items["ids"])
         print(f'Existing items: {len(existing_ids)}')
 
@@ -71,10 +76,17 @@ class DocumentLoader:
             chunk.metadata["id"] = chunk_id
         return chunks
 
-    def clear_database(self):
-        try:
-            chroma_client = PersistentClient(self.chrome_path)
-            chroma_client.delete_collection(self.collection_name)
-            shutil.rmtree(self.chrome_path)
-        except Exception as e:
-            raise e
+    def delete_document(self, list_of_docs):
+        list_of_ids = self.get_documents()["ids"]
+        target_docs = [id for doc in list_of_docs for id in list_of_ids if doc in id]
+        print(target_docs)
+        self.db.delete(target_docs)
+
+    def get_documents(self):
+        collection = self.db.get()
+        return collection
+
+    def ingest(self, file_path):
+        documents = self.load_documents(file_path)
+        chunks = self.split_documents(documents)
+        self.add_to_chroma(chunks)

@@ -28,12 +28,17 @@ def chat():
 def models():
     return render_template('models.html')
 
+@app.route('/chat_lr')
+def chat_lr():
+    return render_template('chat-lr.html')
+
 
 @app.context_processor
 def inject_dict_for_all_templates():
     nav = [
         {'text': "Home", "url": url_for('home')},
         {'text': "Chat", "url": url_for('chat')},
+        {'text': "Chat-Lightrag", "url": url_for('chat_lr')},
         {'text': "Models", "url": url_for('models')},
     ]
     return dict(sidebar=nav)
@@ -47,4 +52,4 @@ def inject_dict_for_chat_html():
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', debug=True)
+    app.run(host='0.0.0.0', debug=True, port=5000)

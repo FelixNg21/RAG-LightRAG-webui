@@ -18,10 +18,10 @@
 {% endblock %}
 
 {% block content %}
-<div id="chat-log" hx-on::after-settle="this.scrollTop = this.scrollHeight">
-    {{ chat_log | safe }}
+<div id="chat-log">
 </div>
-<form hx-post="/query"
+
+<form hx-post="/query-lightrag"
       hx-target="#chat-log"
       hx-swap="beforeend"
       id="query-form"
@@ -29,6 +29,25 @@
     <input id="query-text" type="text" name="query" required>
 <!--    <button type="submit">Send</button>-->
 </form>
+
+<!--<form hx-on::after-request="if(event.detail.successful) this.reset()"-->
+<!--      hx-post="/query-lightrag"-->
+<!--      hx-target="#chat-log"-->
+<!--      hx-swap="beforeend"-->
+<!--      hx-validate="true"-->
+<!--      id="query-form"-->
+<!--      hx-trigger="keydown[key=='Enter'&&!shiftKey]:submit"-->
+<!--      hx-on:keydown="(event.keyCode==13&&!event.shiftKey)?event.preventDefault():null"-->
+<!--&gt;-->
+<!--    <label for="query-text"></label>-->
+<!--    <textarea id="query-text" name="query" placeholder="Enter your query here..."-->
+<!--              onkeyup="this.setCustomValidity('')"-->
+<!--              hx-on:htmx:validation:validate="if(this.value==''){-->
+<!--            this.setCustomValidity('Please enter a query');-->
+<!--            htmx.find('#query-form').reportValidity()-->
+<!--          }"-->
+<!--    ></textarea>-->
+<!--</form>-->
 
 
 <script>

@@ -76,7 +76,7 @@ def process_files(selected_files):
         document_loader.ingest(selected_files)
 
         # Processing for LightRAG
-        lightrag.ingest(selected_files)
+        # lightrag.ingest(selected_files)
 
     except Exception as e:
         return "Error processing files: " + str(e)
@@ -99,13 +99,13 @@ def user(user_message, history: list, session_id=None):
     return "", history, user_message, session_id
 
 
-def get_context(history, user_message):
+def get_context(history, user_message, doc_ids=None):
     """
     Get context based on the user message
     :param history: Chat history
     :param user_message: User message
     """
-    context = ollama.get_context(user_message)
+    context = ollama.get_context(user_message, doc_ids)
     return context, history, user_message
 
 

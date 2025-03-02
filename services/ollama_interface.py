@@ -19,8 +19,6 @@ def extract_model_names(json):
 
 class OllamaInterface:
     def __init__(self, model: str, db: Chroma):
-
-        # self.ollama = ollama.Client("http://ollama:11434")
         self.ollama = ollama
         self.ollama_model_str = model
         self.db = db
@@ -53,8 +51,35 @@ class OllamaInterface:
             print(f"Error querying Ollama: {e}")
             return {"message": {"content": "An error occurred. Please try again."}}
 
-    def get_context(self, prompt: str):
-        return self.db.similarity_search_with_score(prompt)
+    def get_context(self, prompt: str, doc_ids=None):
+        filters = None
+        if doc_ids:
+            if isinstance(doc_ids, str):
+                if "," in doc_ids:
+                    doc_ids = ["./data/pdfs/"+id.strip() for id in doc_ids.split(",")]
+                else:
+                    doc_ids = ["./data/pdfs/" + doc_ids]
+
+            # The correct filter structure for where_document
+            if len(doc_ids) == 1:
+                filters = {"source": doc_ids[0]}
+            else:
+                filters = {"source": {"$in": doc_ids}}
+        print("Filters: ", filters)
+        if filters is None:
+            filtered_context = self.db.similarity_search_with_score(
+                query=prompt,
+                k=5
+            )
+        else:
+            filtered_context = self.db.similarity_search_with_score(
+                query=prompt,
+                k=5,
+                filter=filters
+            )
+            print("Filtered context: ", filtered_context)
+
+        return filtered_context
 
     def get_details(self):
         details = self.ollama.list()

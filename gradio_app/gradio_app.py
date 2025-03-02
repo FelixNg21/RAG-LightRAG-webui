@@ -8,7 +8,10 @@ from services.utils import generate_session_id
 
 #TODO:
 # 1. Add button to delete files (from uploaded files, knowledge base [lightrag, naiverag])
-# 3. Refactor gradio_funcs and gradio_funcs_arena.
+# 2. Add ability to talk to selected documents
+# 3. Add document tracking (ingested, delete, etc)
+# 4. Speed up ingestion of documents
+# 5. Stop hallucinations
 
 # Gradio App
 with gr.Blocks(fill_height=True) as default:
@@ -39,6 +42,7 @@ with gr.Blocks(fill_height=True) as default:
         with gr.Column(scale=1):
             file_input = gr.Files(label="Documents")
             file_checkboxes = gr.CheckboxGroup(label="Uploaded Files", choices=list_files())
+            file_filter = gr.Textbox(label="Filter Files")
             process_files_button = gr.Button("Process Files")
             process_files_output = gr.Textbox()
 
@@ -93,7 +97,7 @@ with gr.Blocks(fill_height=True) as default:
         queue=True
     ).then(
         fn=get_context,
-        inputs=[chat_log, user_message_state],
+        inputs=[chat_log, user_message_state, file_filter],
         outputs=[context, chat_log, user_message_state],
         queue=True
     ).then(
@@ -224,5 +228,5 @@ with gr.Blocks(fill_height=True) as arena:
 chat_app = gr.TabbedInterface([default, arena], tab_names=["Default", "Arena"], title="RAG Chatbot")
 
 if __name__ == "__main__":
-    chat_app.launch(server_name="0.0.0.0", server_port=5000, root_path="https://rag.felicks.duckdns.org", ssl_verify=False)
-    # chat_app.launch(debug=True)
+    # chat_app.launch(server_name="0.0.0.0", server_port=5000, root_path="https://rag.felicks.duckdns.org", ssl_verify=False)
+    chat_app.launch(debug=True)

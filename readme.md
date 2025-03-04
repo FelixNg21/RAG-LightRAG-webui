@@ -36,9 +36,12 @@ The project also has a Gradio interface, that provides a much cleaner and less u
 
 These technologies are all new to me, and I'm excited to see how they can be used in future projects.
 
+### To Do (Client's Requests)
+ - [x] Add button to delete files (from uploaded files, knowledge base)
 
-# How to run
-
-1. Clone the repo
-2. Install the requirements
-3. Run the app.py file in the `flask_app` directory.
+- [ ] Add ability to talk to selected documents
+       - partially implemented for NaiveRAG
+       - LightRAG not implemented
+ -[ ] Add document tracking (ingested, delete, etc)
+- [x] Speed up ingestion of documents
+ -[x] Stop hallucinations 

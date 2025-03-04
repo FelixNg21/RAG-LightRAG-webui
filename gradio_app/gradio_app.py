@@ -3,18 +3,21 @@ from gradio_pdf import PDF
 
 from gradio_funcs import save_files, update_files, process_files, get_chat_histories, load_chat_history, \
     delete_chat, list_files, user, get_context, assistant, refresh_histories, load_chat_history_arena, get_chat_histories_arena, \
-    refresh_histories_arena
+    refresh_histories_arena, delete_files
+
 from services.utils import generate_session_id
 
 #TODO:
 # 1. Add button to delete files (from uploaded files, knowledge base [lightrag, naiverag])
 # 2. Add ability to talk to selected documents
+#       - partially implemented for NaiveRAG
+#       - LightRAG not implemented
 # 3. Add document tracking (ingested, delete, etc)
 # 4. Speed up ingestion of documents
-# 5. Stop hallucinations
+# 5. Stop hallucinations (NaiveRag - complete)
 
 # Gradio App
-with gr.Blocks(fill_height=True) as default:
+with gr.Blocks(fill_height=True, fill_width=True) as default:
     with gr.Row(equal_height=True, scale=1):
         session_id = gr.State(None)
         # Select RAG Type
@@ -39,20 +42,36 @@ with gr.Blocks(fill_height=True) as default:
             delete_btn = gr.Button("🗑Delete Chat", variant="stop")
 
     with gr.Row(scale=50, equal_height=True):
-        with gr.Column(scale=1):
-            file_input = gr.Files(label="Documents")
+        with gr.Column(scale=2):
+            file_input = gr.Files(label="Documents", height="calc(13vh)")
+            status = gr.Textbox(label="Status")
             file_checkboxes = gr.CheckboxGroup(label="Uploaded Files", choices=list_files())
-            file_filter = gr.Textbox(label="Filter Files")
-            process_files_button = gr.Button("Process Files")
-            process_files_output = gr.Textbox()
+            # file_filter = gr.Textbox(label="Filter Files")
+            # process_files_button = gr.Button("Process Files")
 
-            file_input.change(save_files, inputs=file_input).then(
+            delete_files_button = gr.Button(value="Delete Files", variant="stop")
+
+            uploaded_files = gr.State()
+            file_input.upload(
+                save_files, inputs=file_input, outputs=[uploaded_files, file_input],
+            ).then(
+                process_files, inputs=uploaded_files, outputs=status
+            ).success(
                 update_files, outputs=file_checkboxes
             )
-            process_files_button.click(process_files, inputs=[file_checkboxes], outputs=process_files_output)
+
+            delete_files_button.click(
+                delete_files,
+                inputs=[file_checkboxes],
+                outputs=status
+            ).success(
+                update_files,
+                outputs=file_checkboxes
+            )
+
 
         with gr.Column(scale=5):
-            chat_log = gr.Chatbot(type="messages")
+            chat_log = gr.Chatbot(type="messages", height="calc(100vh - 500px)")
             msg = gr.Textbox(label="Message")
             with gr.Row():
                 refresh = gr.Button("Refresh")
@@ -67,8 +86,10 @@ with gr.Blocks(fill_height=True) as default:
         fn=load_chat_history,
         inputs=[chat_history_dropdown],
         outputs=[chat_log, session_id]
+    ).then(
+        update_files,
+        outputs=file_checkboxes
     )
-
     chat_history_dropdown.change(
         fn=load_chat_history,
         inputs=[chat_history_dropdown],
@@ -97,7 +118,7 @@ with gr.Blocks(fill_height=True) as default:
         queue=True
     ).then(
         fn=get_context,
-        inputs=[chat_log, user_message_state, file_filter],
+        inputs=[chat_log, user_message_state], # none for doc_ids
         outputs=[context, chat_log, user_message_state],
         queue=True
     ).then(
@@ -110,7 +131,7 @@ with gr.Blocks(fill_height=True) as default:
     clear.click(lambda: (None, generate_session_id()), None, [chat_log, session_id], queue=False)
 
 # Arena
-with gr.Blocks(fill_height=True) as arena:
+with gr.Blocks(fill_height=True, fill_width=True) as arena:
     # pass
     arena_flag = gr.State(True)
     session_id_arena = gr.State(None)
@@ -134,7 +155,7 @@ with gr.Blocks(fill_height=True) as arena:
             file_input = gr.Files(label="Documents")
             file_checkboxes = gr.CheckboxGroup(label="Uploaded Files", choices=list_files())
             process_files_button = gr.Button("Process Files")
-            process_files_output = gr.Textbox()
+            status = gr.Textbox()
 
         with gr.Column(scale=10):
             with gr.Row():
@@ -154,10 +175,11 @@ with gr.Blocks(fill_height=True) as arena:
             context = gr.State()
             pdf_component = PDF(visible=False)
 
-    file_input.change(save_files, inputs=file_input).then(
+    file_input.change(
+        save_files, inputs=file_input).then(
         update_files, outputs=file_checkboxes
     )
-    process_files_button.click(process_files, inputs=[file_checkboxes], outputs=process_files_output)
+    process_files_button.click(process_files, inputs=[file_checkboxes], outputs=status)
 
     arena.load(
         fn=load_chat_history_arena,

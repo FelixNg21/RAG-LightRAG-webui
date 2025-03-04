@@ -28,6 +28,7 @@ Session=scoped_session(SessionFactory)
 SAVE_DIR = "./data/pdfs"
 os.makedirs(SAVE_DIR, exist_ok=True)
 
+
 # File Management
 def save_files(files):
     """
@@ -37,13 +38,12 @@ def save_files(files):
     """
     if not files:
         return "No files uploaded"
-    saved_files = []
+    file_paths=[]
     for file in files:
         file_path = os.path.join(SAVE_DIR, os.path.basename(file.name))
         shutil.move(file.name, file_path)
-        saved_files.append(file.name)
-    return "Files uploaded: " + str(saved_files)
-
+        file_paths.append(file_path)
+    return file_paths, None
 
 def update_files():
     """
@@ -60,28 +60,49 @@ def list_files():
     :return: List of files or message if no files
     """
     files = os.listdir(SAVE_DIR)
-    return files if files else "No files uploaded"
+    return files
 
 
-def process_files(selected_files):
+def process_files(uploaded_files):
     """
     Process the selected files for both NaiveRAG and LightRAG
     :param selected_files: List of selected files
     :return: Message with the files processed
     """
-    if not selected_files:
-        return "No files selected"
+    if not uploaded_files:
+        return "No files uploaded"
+
     try:
         # Processing for NaiveRAG
-        document_loader.ingest(selected_files)
+        document_loader.ingest(uploaded_files)
 
         # Processing for LightRAG
-        # lightrag.ingest(selected_files)
+        lightrag.ingest(uploaded_files)
 
     except Exception as e:
         return "Error processing files: " + str(e)
 
-    return "Files processed selected files: " + str(selected_files)
+    return "Processed selected files: " + str(uploaded_files)
+
+def delete_files(files):
+    """
+    Delete files from the data directory
+    :param files: List of files
+    :return: Message with the files deleted
+    """
+    if not files:
+        return "No files selected"
+    for file in files:
+
+        # Delete from NaiveRAG
+        document_loader.delete_document(file)
+
+        # Delete from LightRAG
+        lightrag.delete_document(file)
+
+        file_path = os.path.join(SAVE_DIR, file)
+        os.remove(file_path)
+    return "Deleted selected files: " + str(files)
 
 
 # Chat functions

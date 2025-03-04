@@ -22,7 +22,7 @@ class DocumentLoader:
         if file_paths:
             documents = []
             for file_path in file_paths:
-                full_path = f"{self.data_path}/{file_path}"
+                full_path = f"{file_path}"
                 loader = PyPDFLoader(full_path)
                 documents.extend(loader.load())
             return documents
@@ -76,11 +76,13 @@ class DocumentLoader:
             chunk.metadata["id"] = chunk_id
         return chunks
 
-    def delete_document(self, list_of_docs):
-        list_of_ids = self.get_documents()["ids"]
-        target_docs = [id for doc in list_of_docs for id in list_of_ids if doc in id]
-        print(target_docs)
-        self.db.delete(target_docs)
+    def delete_document(self, docs_to_delete):
+        docs_to_delete = [docs_to_delete]
+        all_docs = self.get_documents()["ids"]
+        # print(all_docs)
+        target_docs = [target for target in all_docs for doc in docs_to_delete if doc in target]
+        if target_docs:
+            self.db.delete(target_docs)
 
     def get_documents(self):
         collection = self.db.get()

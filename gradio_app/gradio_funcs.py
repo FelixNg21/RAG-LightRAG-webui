@@ -57,10 +57,10 @@ def update_files():
 def list_files():
     """
     List the files in the data directory
-    :return: List of files or message if no files
+    :return: List of files
     """
     files = os.listdir(SAVE_DIR)
-    return files if files else "No files uploaded"
+    return files
 
 
 def process_files(selected_files):

@@ -38,12 +38,15 @@ class LightRagWrapper:
     def ingest(self, file_paths):
         self.switch_model("llama3.2:latest")
         for path in file_paths:
-            text_content = textract.process(self.doc_dir+"/"+path)
-            self.rag.insert(text_content.decode("utf-8"))
+            text_content = textract.process(path)
+            self.rag.insert(text_content.decode("utf-8"), ids=path)
         self.switch_model("deepseek-r1:8b")
 
     def query(self, query_text, history: list = None, mode: Literal["local", "global", "hybrid", "naive","mix"]='hybrid'):
         return self.rag.query(query_text, param=QueryParam(mode=mode, conversation_history=history))
+
+    def delete_document(self, file_path):
+        self.delete_by_doc_id(file_path)
 
     async def delete_by_doc_id(self, doc_id):
         await self.rag.adelete_by_doc_id(doc_id)

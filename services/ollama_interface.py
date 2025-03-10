@@ -4,12 +4,24 @@ from langchain.prompts import ChatPromptTemplate
 
 
 PROMPT_TEMPLATE = """
-The following information is your only source of truth, only answer the question with the provided context, if you are unable
-to answer the question with the provided context, please state that you do not know.:
+You are an assistant that ONLY provides information based on the given context. Follow these rules strictly:
+
+### RULES:
+1. ONLY use information present in the provided context
+2. If the context doesn't contain the answer, respond with "Based on the provided context, I cannot answer this question."
+3. NEVER make up or infer information not explicitly stated in the context
+4. Do NOT use prior knowledge
+5. Cite specific sections from the context using page numbers where available
+6. Express uncertainty when the context is ambiguous
+7. Be concise and direct in your responses
+
+### CONTEXT:
 {context}
 
----
-Answer the question only using the above context, otherwise state that you do not know: {question}
+### QUESTION:
+{question}
+
+### RESPONSE:
 """
 
 
@@ -19,8 +31,6 @@ def extract_model_names(json):
 
 class OllamaInterface:
     def __init__(self, model: str, db: Chroma):
-
-        # self.ollama = ollama.Client("http://ollama:11434")
         self.ollama = ollama
         self.ollama_model_str = model
         self.db = db
@@ -53,8 +63,34 @@ class OllamaInterface:
             print(f"Error querying Ollama: {e}")
             return {"message": {"content": "An error occurred. Please try again."}}
 
-    def get_context(self, prompt: str):
-        return self.db.similarity_search_with_score(prompt)
+    def get_context(self, prompt: str, doc_ids=None):
+        filters = None
+        if doc_ids:
+            if isinstance(doc_ids, str):
+                if "," in doc_ids:
+                    doc_ids = ["./data/pdfs/"+id.strip() for id in doc_ids.split(",")]
+                else:
+                    doc_ids = ["./data/pdfs/" + doc_ids]
+
+            if len(doc_ids) == 1:
+                filters = {"source": doc_ids[0]}
+            else:
+                filters = {"source": {"$in": doc_ids}}
+        print("Filters: ", filters)
+        if filters is None:
+            filtered_context = self.db.similarity_search_with_score(
+                query=prompt,
+                k=5
+            )
+        else:
+            filtered_context = self.db.similarity_search_with_score(
+                query=prompt,
+                k=5,
+                filter=filters
+            )
+            print("Filtered context: ", filtered_context)
+
+        return filtered_context
 
     def get_details(self):
         details = self.ollama.list()

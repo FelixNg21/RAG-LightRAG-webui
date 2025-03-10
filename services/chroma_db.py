@@ -36,7 +36,7 @@ class Database:
         self.db.delete(doc_id)
 
     def get(self):
-        return self.db.get(include=[])
+        return self.db.get(include=None)
 
     def add_documents(self, new_chunks, ids):
         self.db.add_documents(new_chunks, ids=ids)

@@ -29,3 +29,6 @@ xxhash
 nano_vectordb
 docling
 dotenv
+
+# Additional packages
+gradio_pdf

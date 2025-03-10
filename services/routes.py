@@ -82,8 +82,8 @@ async def fetch_response_lightrag():
 
 def add_chat_to_db(session_id, user_query, chatbot_response):
     chat_log = ChatLog(session_id=session_id, user_query=user_query, chatbot_response=chatbot_response)
-    db.session.add(chat_log)
-    db.session.commit()
+    db.Session.add(chat_log)
+    db.Session.commit()
 
 
 def div_generator(classname, text):
@@ -130,7 +130,7 @@ def get_chat_history(session_id):
 def save_chat():
     data = request.json
     history = ChatHistory(session_id=generate_session_id())
-    db.session.add(history)
+    db.Session.add(history)
 
     for message in data['messages']:
         chat_message = ChatMessage(
@@ -138,9 +138,9 @@ def save_chat():
             role=message['role'],
             content=message['content']
         )
-        db.session.add(chat_message)
+        db.Session.add(chat_message)
 
-    db.session.commit()
+    db.Session.commit()
     return jsonify({'session_id': history.session_id}), 201
 
 @route_api.route('/load-chat', methods=["GET"])

@@ -1,5 +1,5 @@
 # Inspiration
-This project is my exploration into the world of RAGSs and how they can be used in real-world applications. I was coincidentally 
+This project is my exploration into the world of RAG and how they can be used in real-world applications. I was coincidentally 
 approached by a friend who wanted a tool to help him with his day-to-day work and I thought that this was a great opportunity
 to build something that could be useful to him and also help me learn new things.
 

@@ -6,9 +6,12 @@ from lightrag.utils import EmbeddingFunc
 import textract
 from typing import Literal
 
+import asyncio
+import nest_asyncio
+
 llm_model_kwargs = {"host": "http://localhost:11434", "options": {"num_ctx": 32768}}
 class LightRagWrapper:
-    def __init__(self, working_dir, llm_model_name, doc_dir, llm_model_kwargs=llm_model_kwargs, llm_model_max_async=4,
+    def __init__(self, working_dir, llm_model_ingest, llm_model_gen, doc_dir, llm_model_kwargs=llm_model_kwargs, llm_model_max_async=4,
                  llm_model_max_token_size=32768, embedding_dim=768, max_token_size=8192):
 
         if not os.path.exists(working_dir):
@@ -16,6 +19,9 @@ class LightRagWrapper:
 
         if llm_model_kwargs is None:
             llm_model_kwargs = llm_model_kwargs
+
+        self.ingest_model = llm_model_ingest
+        self.gen_model = llm_model_gen
 
         self.embedding_func = EmbeddingFunc(
             embedding_dim=embedding_dim,
@@ -27,7 +33,7 @@ class LightRagWrapper:
         self.rag = LightRAG(
             working_dir=working_dir,
             llm_model_func=ollama_model_complete,
-            llm_model_name=llm_model_name,
+            llm_model_name=self.gen_model,
             llm_model_max_async=llm_model_max_async,
             llm_model_max_token_size=llm_model_max_token_size,
             llm_model_kwargs=llm_model_kwargs,
@@ -36,14 +42,14 @@ class LightRagWrapper:
         self.doc_dir = doc_dir
 
     def ingest(self, file_paths):
-        self.switch_model("llama3.2:latest")
+        self.switch_model(self.ingest_model)
         for path in file_paths:
             text_content = textract.process(path)
             self.rag.insert(text_content.decode("utf-8"), ids=path)
-        self.switch_model("deepseek-r1:8b")
+        self.switch_model(self.gen_model)
 
-    def query(self, query_text, history: list = None, mode: Literal["local", "global", "hybrid", "naive","mix"]='hybrid'):
-        return self.rag.query(query_text, param=QueryParam(mode=mode, conversation_history=history))
+    def query(self, query_text, history: list = None, mode: Literal["local", "global", "hybrid", "naive","mix"]='mix', only_need_context=False):
+        return self.rag.query(query_text, param=QueryParam(mode=mode, conversation_history=history, only_need_context=only_need_context))
 
     def delete_document(self, file_path):
         self.delete_by_doc_id(file_path)

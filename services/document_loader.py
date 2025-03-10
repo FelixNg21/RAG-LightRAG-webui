@@ -1,9 +1,6 @@
-# migrate functions from notebook to script
-
 from langchain_community.document_loaders import PyPDFDirectoryLoader, PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain.schema.document import Document
-from langchain_chroma import Chroma
 from services.chroma_db import Database
 
 
@@ -12,7 +9,7 @@ class DocumentLoader:
     DocumentLoader class to load and split documents for use in RAG application
     """
 
-    def __init__(self, db: Database, collection_name="documents", data_path="data/pdfs", ):
+    def __init__(self, db: Database, collection_name="documents", data_path="data/pdfs"):
         self.data_path = data_path
         self.loader = PyPDFDirectoryLoader(self.data_path)
         self.db = db
@@ -79,7 +76,6 @@ class DocumentLoader:
     def delete_document(self, docs_to_delete):
         docs_to_delete = [docs_to_delete]
         all_docs = self.get_documents()["ids"]
-        # print(all_docs)
         target_docs = [target for target in all_docs for doc in docs_to_delete if doc in target]
         if target_docs:
             self.db.delete(target_docs)

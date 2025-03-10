@@ -27,3 +27,5 @@ xxhash
 
 # Extra libraries are installed when needed using pipmaster
 nano_vectordb
+docling
+dotenv
